@@ -1,0 +1,41 @@
+version: '2.2'
+
+services:
+  client:
+    build: docker/build
+    container_name: oop2-client
+    restart: "no"
+    stdin_open: true
+    tty: true
+    ports:
+      - 5005:5005
+    volumes:
+      - ./:/app
+    networks:
+      - oop2net
+  server:
+    build: docker/build
+    container_name: oop2-server
+    restart: "no"
+    stdin_open: true
+    tty: true
+    ports:
+      - 5006:5006
+    volumes:
+      - ./:/app
+    networks:
+      - oop2net
+  mvn:
+    build: docker/build
+    container_name: oop2-mvn
+    restart: "no"
+    stdin_open: true
+    tty: true
+    entrypoint: mvn clean install
+    volumes:
+      - ./:/app
+    networks:
+      - oop2net
+networks:
+  oop2net:
+
