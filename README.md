@@ -101,8 +101,11 @@ The root directory of your repository contains a variety of scripts. Find out wh
 * `./docker/server.sh` - Starts the Analysis Server inside Docker.
 * `./docker/client.sh <COMMAND> <ARGS>` - Connects to the Analysis Server inside Docker and performs one command.
 * `./docker/client.sh` - Connects to the Analysis Server inside Docker and opens cli to enter commands.
-
+* `./docker/debugclient.sh` - Same as client.sh with additional debugging functionality
+* `./docker/debugserver.sh` - Same as server.sh with additional debugging functionality
 Try running these commands to check if you can build the project and if you have installed all components correctly. Make sure the scripts are executable (`chmod +x ./docker/<filename>`).
+
+For more docker information you can have a look [here](docker/DOCKER.md).
 
 ## Setting up Your IDE
 
