@@ -14,17 +14,12 @@ import java.util.List;
 public class ProjectThread extends Thread {
     Socket socket;
     String path;
-
     List<Sensor> sensorList = new ArrayList<>();
 
 
     ProjectThread(Socket socket, String path) {
         this.socket = socket;
-        //this.path = path;
-        //if (new File(path).listFiles() == null) {
-            File projectDir = new File(System.getProperty("user.dir"));
-            this.path = projectDir + File.separator + "data";
-        //}
+        this.path = path;
     }
 
     @Override
@@ -38,8 +33,6 @@ public class ProjectThread extends Thread {
 
                 Logger.err("we got something from a client which is : " + msg);
                 File file = new File(path);
-                System.out.println(path);
-                System.out.println(file.getName());
                 System.out.println(file.getAbsolutePath());
                 querySensors(file);
                 outputStream.writeObject(sensorList);
@@ -59,7 +52,7 @@ public class ProjectThread extends Thread {
                 if (f.isDirectory()) {
                     querySensors(f);
                 } else {
-                    BufferedReader br = new BufferedReader(new FileReader(f.getName()));
+                    BufferedReader br = new BufferedReader(new FileReader(f));
                     String line;
                     boolean ignoreFirst = true;
                     while ((line = br.readLine()) != null) {
@@ -68,7 +61,6 @@ public class ProjectThread extends Thread {
                             ignoreFirst = false;
                         } else {
                             String[] objects = line.split(";");
-                            // 1000;SDS011;489;47.805;12.858;2018-01-01T00:01:40;137.88;;;122.95;;
                             int id = Integer.parseInt(objects[0]);
                             String type = objects[1];
                             String location = objects[2];
