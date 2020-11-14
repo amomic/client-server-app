@@ -18,25 +18,21 @@ public final class AnalysisServer {
     }
 
     private boolean waiting = true;
+
     public void run() {
-        // FIXME Multithreading
+        // TODO Start here with a loop accepting new client connections.
         try {
             ServerSocket serverSocket = new ServerSocket(this.serverPort);
+            Logger.info("Server: waiting for connection!");
             while(waiting) {
-                System.out.println("Waiting for the client request");
-                // accept a connection
                 Socket socket = serverSocket.accept();
-                ProjectThread thread = new ProjectThread(socket, dataPath);
-                thread.start();
-
+                Logger.info("Server: new client is connected!");
+                new ServerThread(socket, dataPath).start();
             }
-            System.out.println("Shutting down socket server");
-            //close the ServerSocket object
-            serverSocket.close();
-        } catch(IOException e) {
-            e.printStackTrace();
+        } catch (IOException ioException) {
+            Logger.info("Something went wrong with new client connection!");
+            ioException.printStackTrace();
         }
-        // TODO Start here with a loop accepting new client connections.
 
     }
 }

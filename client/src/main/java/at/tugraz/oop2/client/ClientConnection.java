@@ -1,25 +1,31 @@
 package at.tugraz.oop2.client;
 
-import at.tugraz.oop2.Logger;
 import at.tugraz.oop2.data.DataQueryParameters;
 import at.tugraz.oop2.data.DataSeries;
 import at.tugraz.oop2.data.Sensor;
-import org.apache.commons.lang3.NotImplementedException;
+import at.tugraz.oop2.Logger;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.net.*;
-import java.io.*;
-import java.util.*;
+
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
+
+
 /**
  * Used for managing the connection to the server and for sending requests.
  */
 public final class ClientConnection implements AutoCloseable {
     private final LinkedBlockingQueue<ConnectionEventHandler> connectionClosedEventHandlers;
     private final LinkedBlockingQueue<ConnectionEventHandler> connectionOpenedEventHandlers;
-    private Socket socket;
+
+    // added
+    private ObjectOutputStream outputStream;
+    private ObjectInputStream inputStream;
+    private Socket clientSocket;
 
     public ClientConnection() {
         connectionClosedEventHandlers = new LinkedBlockingQueue<>();
@@ -27,18 +33,28 @@ public final class ClientConnection implements AutoCloseable {
     }
 
     public void connect(String url, int port) throws IOException {
-        //TODO connect to server and call OpenedEventHandle
-        socket = new Socket(url,port);
-        addConnectionOpenedListener(() -> System.out.println("Client disconnected."));
+        //TODO connect to server and call OpenedEventHandler -> DONE
+        this.clientSocket = new Socket(url, port);
+        addConnectionClosedListener(() -> Logger.info("Client connected."));
+
+        outputStream = new ObjectOutputStream(this.clientSocket.getOutputStream());
+        inputStream = new ObjectInputStream(this.clientSocket.getInputStream());
+
+        connectionOpenedEventHandlers.forEach(ConnectionEventHandler::apply);
     }
 
     @Override
     public void close() {
-        // close connection and call ClosedEventHandler
+        //TODO close connection and call ClosedEventHandler -> DONE
         try {
+            Logger.info("Closing socket and streams!");
+            inputStream.close();
+            outputStream.close();
+            clientSocket.close();
+
             connectionClosedEventHandlers.forEach(ConnectionEventHandler::apply);
-            socket.close();
         } catch (IOException ioException) {
+            Logger.err("Socket not closed successfully!");
             ioException.printStackTrace();
         }
     }
@@ -58,25 +74,21 @@ public final class ClientConnection implements AutoCloseable {
         connectionOpenedEventHandlers.add(eventHandler);
     }
 
-
-    public CompletableFuture<List<Sensor>> querySensors() {
+    // TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    public CompletableFuture<List<Sensor>> querySensors() throws IOException, ClassNotFoundException {
         CompletableFuture<List<Sensor>> sensors = new CompletableFuture<>();
+
+
         try {
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(socket.getOutputStream());
-            objectOutputStream.writeObject("queryLS");
-
-            ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
-            List<Sensor> sensorsList = (List<Sensor>) inputStream.readObject();
-            sensors.complete(sensorsList);
-
-            objectOutputStream.close();
-            inputStream.close();
-
-        } catch (IOException | ClassNotFoundException ioException) {
-            ioException.printStackTrace();
+            outputStream.writeObject("queryLS");
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+
+        @SuppressWarnings("unchecked")
+        List<Sensor> sensorsList = (List<Sensor>) inputStream.readObject();
+        sensors.complete(sensorsList);
         return sensors;
-        // throw new NotImplementedException("Implement in Assignment 1");
     }
 
     public CompletableFuture<DataSeries> queryData(DataQueryParameters dataQueryParameters) {
