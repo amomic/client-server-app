@@ -1,11 +1,13 @@
 package at.tugraz.oop2.client;
 
+import at.tugraz.oop2.Logger;
 import at.tugraz.oop2.Util;
 import at.tugraz.oop2.data.DataPoint;
 import at.tugraz.oop2.data.DataQueryParameters;
 import at.tugraz.oop2.data.DataSeries;
 import at.tugraz.oop2.data.Sensor;
 
+import java.io.ObjectOutputStream;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -40,7 +42,7 @@ public final class CommandHandler {
     }
 
     private static void printDataPoint(DataPoint point) {
-        System.out.println("\t" + point.getTime() + "\t" + point.getValue());
+       // System.out.println("\t" + point.getTime() + "\t" + point.getValue());
     }
 
     public void handle(String... args) {
@@ -83,8 +85,10 @@ public final class CommandHandler {
 
     private void listSensors(String... args) throws Exception {
         validateArgc(args, 0);
+        Logger.clientRequestLS();
 
         final List<Sensor> sensors = conn.querySensors().get();
+        Logger.clientResponseLS(sensors);
         //TODO print Sensors (not just use the Logger::clientResponseLS)
     }
 
@@ -97,9 +101,9 @@ public final class CommandHandler {
         final DataSeries.Operation operation = args.length < 5 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[4].toUpperCase());
         final long interval = args.length < 6 ? from.until(to, ChronoUnit.SECONDS) : Util.stringToInterval(args[5]);
 
-        final DataQueryParameters dataQueryParameters = new DataQueryParameters(sensorId, type, from, to, operation, interval);
+        //final DataQueryParameters dataQueryParameters = new DataQueryParameters(sensorId, type, from, to, operation, interval);
 
-        final DataSeries series = conn.queryData(dataQueryParameters).get();
+        //final DataSeries series = conn.queryData(dataQueryParameters).get();
         //TODO print Sensors (not just use the Logger::clientResponseData)
     }
 

@@ -21,7 +21,7 @@ import java.util.List;
 public class Logger {
 
 
-    private static final boolean OUTPUTHIDDEN = true;
+    private static final boolean OUTPUTHIDDEN = false;
 
     // https://stackoverflow.com/questions/5762491/how-to-print-color-in-console-using-system-out-println
     // In case you encounter problems with printing color to console and you want to remove it:

@@ -5,6 +5,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
+import java.io.Serializable;
+
 /**
  * Holds the combination of a location and a metric of a sensor.
  * <p>
@@ -16,7 +18,7 @@ import lombok.ToString;
 @AllArgsConstructor
 @EqualsAndHashCode
 @ToString
-public final class Sensor {
+public final class Sensor implements Serializable {
 
     private final int id;
     private final String type;
