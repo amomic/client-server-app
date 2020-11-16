@@ -35,7 +35,7 @@ public class ServerThread extends Thread {
             if (msg.equals("queryLS")) {
 
                 Logger.info("we got something from a client which is : " + msg);
-                File file = new File("/app/data/sensors/");
+                File file = new File(path + "/sensors");
                 querySensors(file);
                 outputStream.writeObject(sensorList);
 
@@ -49,12 +49,16 @@ public class ServerThread extends Thread {
 
     private void querySensors(File file) throws IOException {
         System.out.println("start");
-
-        for (File f : file.listFiles()) {
+        boolean is_not_directory = false;
+        System.out.println(file.getName());
+        File[] files = file.listFiles();
+        for (File f : files) {
             System.out.println(f.getName());
+
             if (f.isDirectory()) {
                 querySensors(f);
             } else {
+                is_not_directory = true;
                 BufferedReader br = new BufferedReader(new FileReader(f));
                 String line;
                 boolean ignoreFirst = true;
@@ -69,18 +73,31 @@ public class ServerThread extends Thread {
                         String location = objects[2];
                         double lat = Double.parseDouble(objects[3]);
                         double lon = Double.parseDouble(objects[4]);
-                        String p1 = objects[6];
-                        String p2 = objects[9];
+                        String p1 = "";
+                        String p2 = "";
+                        if(type.equals("SDS011")) {
+                            p1 = "P1";
+                            p2 = "P2";
+                        }else if (type.equals("DHT22"))
+                        {
+                            p1 = "temperature";
+                            p2 = "humidity";
+                        } else if (type.equals("BME280"))
+                        {
+                            p1 = "temperature";
+                            p2 = "humidity";
+                        }
+
                         Sensor s1 = new Sensor(id, type, lat, lon, location, p1);
                         Sensor s2 = new Sensor(id, type, lat, lon, location, p2);
                         sensorList.add(s1);
                         sensorList.add(s2);
+                        break;
                     }
-
-
                 }
             }
-            break;
+            if(is_not_directory)
+                break;
         }
     }
 
