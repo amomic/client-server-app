@@ -33,11 +33,11 @@ public class ServerThread extends Thread {
                 msg = (String) inputStream.readObject();
             }
             if (msg.equals("queryLS")) {
-
-                Logger.info("we got something from a client which is : " + msg);
+                Logger.serverRequestLS();
                 File file = new File(path + "/sensors");
                 querySensors(file);
                 outputStream.writeObject(sensorList);
+                Logger.serverResponseLS(sensorList);
 
             }
         } catch (IOException | ClassNotFoundException e) {
@@ -46,15 +46,10 @@ public class ServerThread extends Thread {
 
     }
 
-
     private void querySensors(File file) throws IOException {
-        System.out.println("start");
         boolean is_not_directory = false;
-        System.out.println(file.getName());
         File[] files = file.listFiles();
         for (File f : files) {
-            System.out.println(f.getName());
-
             if (f.isDirectory()) {
                 querySensors(f);
             } else {
@@ -100,5 +95,4 @@ public class ServerThread extends Thread {
                 break;
         }
     }
-
 }

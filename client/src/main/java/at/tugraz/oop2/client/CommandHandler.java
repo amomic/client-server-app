@@ -85,8 +85,10 @@ public final class CommandHandler {
     private void listSensors(String... args) throws Exception {
         validateArgc(args, 0);
         Logger.clientRequestLS();
-        //TODO print Sensors (not just use the Logger::clientResponseLS) -> DONE
+        //TODO print Sensors (not just use the Logger::clientResponseLS)
         final List<Sensor> sensors = conn.querySensors().get();
+        //TODO add all needed params
+        sensors.stream().map(sensor -> '\t' + sensor.getLocation() + " - " + sensor.getMetric()).sorted(String::compareTo).forEach(System.out::println);
         Logger.clientResponseLS(sensors);
     }
 

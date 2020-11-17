@@ -1,18 +1,17 @@
 package at.tugraz.oop2.client;
 
+import at.tugraz.oop2.Logger;
 import at.tugraz.oop2.data.DataQueryParameters;
 import at.tugraz.oop2.data.DataSeries;
 import at.tugraz.oop2.data.Sensor;
-import at.tugraz.oop2.Logger;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.LinkedBlockingQueue;
-
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.LinkedBlockingQueue;
 
 
 /**
@@ -35,12 +34,11 @@ public final class ClientConnection implements AutoCloseable {
     public void connect(String url, int port) throws IOException {
         //TODO connect to server and call OpenedEventHandler -> DONE
         this.clientSocket = new Socket(url, port);
-        addConnectionClosedListener(() -> Logger.info("Client connected."));
+        addConnectionOpenedListener(() -> Logger.info("Client connected."));
 
         outputStream = new ObjectOutputStream(this.clientSocket.getOutputStream());
         inputStream = new ObjectInputStream(this.clientSocket.getInputStream());
 
-        connectionOpenedEventHandlers.forEach(ConnectionEventHandler::apply);
     }
 
     @Override
@@ -52,7 +50,7 @@ public final class ClientConnection implements AutoCloseable {
             outputStream.close();
             clientSocket.close();
 
-            connectionClosedEventHandlers.forEach(ConnectionEventHandler::apply);
+            addConnectionClosedListener(() -> Logger.info("Client disconnected."));
         } catch (IOException ioException) {
             Logger.err("Socket not closed successfully!");
             ioException.printStackTrace();
@@ -78,7 +76,6 @@ public final class ClientConnection implements AutoCloseable {
     public CompletableFuture<List<Sensor>> querySensors() throws IOException, ClassNotFoundException {
         CompletableFuture<List<Sensor>> sensors = new CompletableFuture<>();
 
-
         try {
             outputStream.writeObject("queryLS");
         } catch (IOException e) {
@@ -99,4 +96,5 @@ public final class ClientConnection implements AutoCloseable {
     public interface ConnectionEventHandler {
         void apply();
     }
+
 }
