@@ -1,11 +1,11 @@
 package at.tugraz.oop2.client;
 
+import at.tugraz.oop2.Logger;
 import at.tugraz.oop2.Util;
 import at.tugraz.oop2.data.DataPoint;
 import at.tugraz.oop2.data.DataQueryParameters;
 import at.tugraz.oop2.data.DataSeries;
 import at.tugraz.oop2.data.Sensor;
-import at.tugraz.oop2.Logger;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -87,9 +87,16 @@ public final class CommandHandler {
         Logger.clientRequestLS();
         //TODO print Sensors (not just use the Logger::clientResponseLS)
         final List<Sensor> sensors = conn.querySensors().get();
-        //TODO add all needed params
-        sensors.stream().map(sensor -> '\t' + sensor.getLocation() + " - " + sensor.getMetric()).sorted(String::compareTo).forEach(System.out::println);
         Logger.clientResponseLS(sensors);
+        // TODO: fix the alignment
+        System.out.println("Id | Type | Location | Lat | Lon | Metric");
+        sensors.forEach(sensor -> {
+            //sensor_id;sensor_type;location;lat;lon;timestamp;P1;durP1;ratioP1;P2;durP2;ratioP2
+            String line = String.format(" %s  ,  %s,  %s, , %s,  %s,  %s", String.valueOf(sensor.getId()),
+                    sensor.getType(), sensor.getLocation(), String.valueOf(sensor.getLatitude()),
+                    String.valueOf(sensor.getLongitude()), sensor.getMetric());
+            System.out.println(line);
+        });
     }
 
     private void queryData(String... args) throws Exception {
@@ -102,8 +109,15 @@ public final class CommandHandler {
         final long interval = args.length < 6 ? from.until(to, ChronoUnit.SECONDS) : Util.stringToInterval(args[5]);
 
         final DataQueryParameters dataQueryParameters = new DataQueryParameters(sensorId, type, from, to, operation, interval);
-
+        Logger.clientRequestData(dataQueryParameters);
         final DataSeries series = conn.queryData(dataQueryParameters).get();
+        Logger.clientResponseData(dataQueryParameters, series);
+        System.out.println("TimeStamp | Value");
+        // TODO: fix this, it is not printed in terminal
+        series.forEach((DataPoint datapoint) -> {
+            String line = String.format("%s  , %s", datapoint.getTime().toString(), String.valueOf( datapoint.getValue()));
+            System.out.println(line);
+        });
         //TODO print Sensors (not just use the Logger::clientResponseData)
     }
 

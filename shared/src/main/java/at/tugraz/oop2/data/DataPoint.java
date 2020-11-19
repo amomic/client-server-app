@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
@@ -18,7 +19,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @EqualsAndHashCode
 @ToString
-public final class DataPoint implements Comparable<DataPoint> {
+public final class DataPoint implements Comparable<DataPoint>, Serializable {
     private final LocalDateTime time;
     private final double value;
 

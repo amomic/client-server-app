@@ -4,6 +4,7 @@ import at.tugraz.oop2.Logger;
 import at.tugraz.oop2.data.DataQueryParameters;
 import at.tugraz.oop2.data.DataSeries;
 import at.tugraz.oop2.data.Sensor;
+import at.tugraz.oop2.data.WrapperLsObject;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -12,6 +13,8 @@ import java.net.Socket;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.Map;
+import java.util.HashMap;
 
 
 /**
@@ -25,6 +28,7 @@ public final class ClientConnection implements AutoCloseable {
     private ObjectOutputStream outputStream;
     private ObjectInputStream inputStream;
     private Socket clientSocket;
+    private Map<Integer, CompletableFuture> responses = new HashMap<>();
 
     public ClientConnection() {
         connectionClosedEventHandlers = new LinkedBlockingQueue<>();
@@ -76,20 +80,22 @@ public final class ClientConnection implements AutoCloseable {
     public CompletableFuture<List<Sensor>> querySensors() throws IOException, ClassNotFoundException {
         CompletableFuture<List<Sensor>> sensors = new CompletableFuture<>();
 
-        try {
-            outputStream.writeObject("queryLS");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        outputStream.writeObject("queryLS");
 
-        @SuppressWarnings("unchecked")
-        List<Sensor> sensorsList = (List<Sensor>) inputStream.readObject();
-        sensors.complete(sensorsList);
+        WrapperLsObject wrapperLsObject = (WrapperLsObject) inputStream.readObject();
+        outputStream.reset();
+        sensors.complete(wrapperLsObject.getSensorList());
         return sensors;
     }
 
-    public CompletableFuture<DataSeries> queryData(DataQueryParameters dataQueryParameters) {
-        throw new UnsupportedOperationException("Implement in Assignment 1");//TODO
+    public CompletableFuture<DataSeries> queryData(DataQueryParameters dataQueryParameters) throws IOException, ClassNotFoundException {
+        CompletableFuture<DataSeries> seriesCompletableFuture = new CompletableFuture<>();
+        outputStream.writeObject(dataQueryParameters);
+
+        DataSeries dataSeries = (DataSeries) inputStream.readObject();
+        outputStream.reset();
+        seriesCompletableFuture.complete(dataSeries);
+        return seriesCompletableFuture;
     }
 
     @FunctionalInterface

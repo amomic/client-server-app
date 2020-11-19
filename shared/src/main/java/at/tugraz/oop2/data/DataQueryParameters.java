@@ -5,13 +5,14 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
 @EqualsAndHashCode
 @ToString
-public class DataQueryParameters {
+public class DataQueryParameters implements Serializable {
     private final int sensorId;
     private final String metric;
     private final LocalDateTime from;
