@@ -85,18 +85,25 @@ public final class CommandHandler {
     private void listSensors(String... args) throws Exception {
         validateArgc(args, 0);
         Logger.clientRequestLS();
-        //TODO print Sensors (not just use the Logger::clientResponseLS)
+        //TODO print Sensors (not just use the Logger::clientResponseLS) -> DONE
         final List<Sensor> sensors = conn.querySensors().get();
         Logger.clientResponseLS(sensors);
-        // TODO: fix the alignment
-        System.out.println("Id | Type | Location | Lat | Lon | Metric");
+
+        System.out.println("| ----------------------------------------------------------------------------------------------------------------------------------------------|");
+        System.out.println("|           Id          |          Type         |      Location        |         Lat            |          Lon       |         Metric           |");
+        System.out.println("| ----------------------------------------------------------------------------------------------------------------------------------------------|");
+
         sensors.forEach(sensor -> {
             //sensor_id;sensor_type;location;lat;lon;timestamp;P1;durP1;ratioP1;P2;durP2;ratioP2
-            String line = String.format(" %s  ,  %s,  %s, , %s,  %s,  %s", String.valueOf(sensor.getId()),
+            String line = String.format("|  %20s |  %20s |  %20s |  %20s |  %20s |  %20s |", String.valueOf(sensor.getId()),
                     sensor.getType(), sensor.getLocation(), String.valueOf(sensor.getLatitude()),
                     String.valueOf(sensor.getLongitude()), sensor.getMetric());
             System.out.println(line);
         });
+    }
+
+    private static String getNewline() {
+        return "\n         ";
     }
 
     private void queryData(String... args) throws Exception {
@@ -112,13 +119,16 @@ public final class CommandHandler {
         Logger.clientRequestData(dataQueryParameters);
         final DataSeries series = conn.queryData(dataQueryParameters).get();
         Logger.clientResponseData(dataQueryParameters, series);
-        System.out.println("TimeStamp | Value");
-        // TODO: fix this, it is not printed in terminal
+        System.out.println("| ----------------------------------------------|");
+        System.out.println("|      Timestamp        |         Value         |");
+        System.out.println("| ----------------------------------------------|");
+
         series.forEach((DataPoint datapoint) -> {
-            String line = String.format("%s  , %s", datapoint.getTime().toString(), String.valueOf( datapoint.getValue()));
+            String line = String.format("|  %20s |  %20s | ", datapoint.getTime().toString(), String.valueOf( datapoint.getValue()));
             System.out.println(line);
         });
-        //TODO print Sensors (not just use the Logger::clientResponseData)
+        System.out.println("| ----------------------------------------------|");
+        //TODO print Sensors (not just use the Logger::clientResponseData) -> DONE
     }
 
     private void queryLineChart(String... args) throws Exception {

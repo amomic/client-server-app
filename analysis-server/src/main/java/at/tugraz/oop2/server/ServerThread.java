@@ -3,6 +3,10 @@ package at.tugraz.oop2.server;
 import at.tugraz.oop2.Logger;
 import at.tugraz.oop2.Util;
 import at.tugraz.oop2.data.*;
+import at.tugraz.oop2.data.DataPoint;
+import at.tugraz.oop2.data.DataQueryParameters;
+import at.tugraz.oop2.data.DataSeries;
+import at.tugraz.oop2.data.Sensor;
 
 import java.io.*;
 import java.net.Socket;
@@ -43,6 +47,19 @@ public class ServerThread extends Thread {
                 outputStream.writeObject(new WrapperLsObject(sensorList));
                 outputStream.reset();
                 Logger.serverResponseLS(sensorList);
+
+                System.out.println("| ----------------------------------------------------------------------------------------------------------------------------------------------|");
+                System.out.println("|           Id           |          Type          |      Location      |         Lat         |          Lon          |         Metric           |");
+                System.out.println("| ----------------------------------------------------------------------------------------------------------------------------------------------|");
+
+                sensorList.forEach(sensor -> {
+                    //sensor_id;sensor_type;location;lat;lon;timestamp;P1;durP1;ratioP1;P2;durP2;ratioP2
+                    String line = String.format("|  %20s |  %20s |  %20s |  %20s |  %20s |  %20s |", String.valueOf(sensor.getId()),
+                            sensor.getType(), sensor.getLocation(), String.valueOf(sensor.getLatitude()),
+                            String.valueOf(sensor.getLongitude()), sensor.getMetric());
+                    System.out.println(line);
+                });
+
             } else if (msg instanceof DataQueryParameters) {
                 DataQueryParameters parameters = (DataQueryParameters) msg;
                 Logger.serverRequestData(parameters);
@@ -59,13 +76,14 @@ public class ServerThread extends Thread {
 
     private DataSeries queryData(DataQueryParameters parameters) throws IOException {
         File file = new File(path + "/sensors");
+
         // this will be overwritten by getData() so we use random values to avouid null warning
         Sensor sensor = new Sensor(parameters.getSensorId(), "", 2d,3d,"", parameters.getMetric());
         List<DataPoint> dataPoints = new ArrayList<>();
         List<DataPoint> result = new ArrayList<>();
+
         getData(file, parameters, sensor, dataPoints);
 
-        // TODO: Operations calculations
         switch (parameters.getOperation()) {
             case NONE:
                 result.addAll(dataPoints);
@@ -100,8 +118,37 @@ public class ServerThread extends Thread {
                         .findFirst().orElse(new DataPoint(LocalDateTime.now(), avg));
                 result.add(avgData);
                 break;
-            // TODO: sort the values and get the middle one, in case you got 2 values, get average of them
             case MEDIAN:
+                double median = 0;
+                int sum = 0;
+                double[] medianList = dataPoints.stream()
+                        .mapToDouble(DataPoint::getValue)
+                        .sorted()
+                        .toArray();
+                for(double i: medianList) {
+                    sum++;
+                }
+                // FIXME: also weird stuff happening with a few first lines of csv file
+                if(sum == 1) {
+                    median = medianList[0];
+                } else if(sum == 2) {
+                    median = (medianList[0] + medianList[1]) / 2;
+                } else if(sum > 2) {
+                    if(sum % 2 == 0) {
+                        int idx1 = sum / 2;
+                        int idx2 = sum / 2 - 1;
+                        median = (medianList[idx1] + medianList[idx2]) / 2;;
+                    } else {
+                        int idx = sum / 2;
+                        median = medianList[idx];
+                    }
+                }
+                // TODO: cast
+                double finalMedian = median;
+                DataPoint medData = dataPoints.stream()
+                        .filter(dataPoint -> dataPoint.getValue() == finalMedian)
+                        .findFirst().orElse(new DataPoint(LocalDateTime.now(), median));
+                result.add(medData);
                 break;
         }
 
