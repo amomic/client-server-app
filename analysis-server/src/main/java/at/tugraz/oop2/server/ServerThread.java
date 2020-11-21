@@ -85,7 +85,6 @@ public class ServerThread extends Thread {
 
         // TODO data command: kad uzme from prvu liniju csv fajla nikad je ne include
         // TODO data command: interpolation
-        // TODO data command: median was working until i changed it with intervals, FIX it
         // TODO data command: stop printing when error occurs
 
         if(parameters.getOperation() == null) {
@@ -269,18 +268,14 @@ public class ServerThread extends Thread {
                     break;
 
                 case MEDIAN:
-                    // TODO: fix median java.lang.ArrayIndexOutOfBoundsException in every case
                     double median = 0;
-                    int sum = 0;
                     missingMeasureCounter = 0;
 
                     for(LocalDateTime start = parameters.getFrom();
                         start.compareTo(parameters.getTo()) < 0;
                         start = start.plusSeconds(parameters.getInterval())
                     ) {
-                        if(start.plusSeconds(parameters.getInterval()).compareTo(parameters.getTo()) > 0) {
-                            break;
-                        }
+                        int sum = 0;
 
                         final LocalDateTime currentStartTime = start;
 
@@ -288,6 +283,38 @@ public class ServerThread extends Thread {
                                 .filter((dataPoint) -> currentStartTime.compareTo(dataPoint.getTime()) <= 0 &&
                                         currentStartTime.plusSeconds(parameters.getInterval()).compareTo(dataPoint.getTime()) > 0)
                                 .collect(Collectors.toCollection(TreeSet::new));
+
+                        if(start.plusSeconds(parameters.getInterval()).compareTo(parameters.getTo()) > 0) {
+                            double[] medianList = dataPointsInInterval.stream()
+                                    .mapToDouble(DataPoint::getValue)
+                                    .sorted()
+                                    .toArray();
+                            for(double element: medianList) {
+                                sum++;
+                            }
+
+                            if(sum == 1) {
+                                median = medianList[0];
+                            } else if(sum == 2) {
+                                median = (medianList[0] + medianList[1]) / 2;
+                            } else if(sum > 2) {
+                                if(sum % 2 == 0) {
+                                    int idx1 = sum / 2;
+                                    int idx2 = sum / 2 - 1;
+                                    median = (medianList[idx1] + medianList[idx2]) / 2;;
+                                } else {
+                                    int idx = sum / 2;
+                                    median = medianList[idx];
+                                }
+                            }
+
+                            double finalMedian = median;
+                            DataPoint medData = dataPoints.stream()
+                                    .filter(dataPoint -> dataPoint.getValue() == finalMedian)
+                                    .findFirst().orElse(new DataPoint(LocalDateTime.now(), median));
+                            result.add(medData);
+                            break;
+                        }
 
                         if(!dataPointsInInterval.isEmpty()) {
                             double[] medianList = dataPointsInInterval.stream()
