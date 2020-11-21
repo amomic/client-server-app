@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import java.util.*;
+import java.awt.*;
 
 
 // TODO: scatterplot, linechart, caching
@@ -30,59 +32,73 @@ public class ServerThread extends Thread {
     @Override
     public void run() {
         super.run();
-        try {
-            ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
-            ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
-            Object msg = null;
-            synchronized (inputStream) {
-                msg = inputStream.readObject();
-            }
-            if (msg instanceof String && msg.equals("queryLS")) {
-                Logger.serverRequestLS();
-                File file = new File(path + "/sensors");
-                querySensors(file);
-                outputStream.writeObject(new WrapperLsObject(sensorList));
-                outputStream.reset();
-                Logger.serverResponseLS(sensorList);
 
-                System.out.println("| ----------------------------------------------------------------------------------------------------------------------------------------------|");
-                System.out.println("|           Id           |          Type          |      Location      |         Lat         |          Lon          |         Metric           |");
-                System.out.println("| ----------------------------------------------------------------------------------------------------------------------------------------------|");
+            try {
+                ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
+                ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
+                Object msg = null;
 
-                sensorList.forEach(sensor -> {
-                    String line = String.format("|  %20s |  %20s |  %20s |  %20s |  %20s |  %20s |", String.valueOf(sensor.getId()),
-                            sensor.getType(), sensor.getLocation(), String.valueOf(sensor.getLatitude()),
-                            String.valueOf(sensor.getLongitude()), sensor.getMetric());
-                    System.out.println(line);
-                });
 
-            } else if (msg instanceof DataQueryParameters) {
-                DataQueryParameters parameters = (DataQueryParameters) msg;
-                Logger.serverRequestData(parameters);
-                DataSeries dataSeries = queryData(parameters);
-                outputStream.writeObject(dataSeries);
-                outputStream.reset();
-                if(dataSeries.size() != 0) {
-                    Logger.serverResponseData(parameters, dataSeries);
+                while (true) {
+                    synchronized (inputStream) {
+                        msg = inputStream.readObject();
 
-                    System.out.println("| ----------------------------------------------|");
-                    System.out.println("|      Timestamp        |         Value         |");
-                    System.out.println("| ----------------------------------------------|");
+                    }
+                   // System.out.println("````````````````````````````````````````````````````````");
+                   // System.out.println(msg);
+                    if (msg instanceof String && msg.equals("queryLS")) {
+                        Logger.serverRequestLS();
+                        File file = new File(path + "/sensors");
+                        querySensors(file);
+                        outputStream.writeObject(new WrapperLsObject(sensorList));
+                        outputStream.reset();
+                        Logger.serverResponseLS(sensorList);
 
-                    dataSeries.forEach((DataPoint datapoint) -> {
-                        String line = String.format("|  %20s |  %20s | ", datapoint.getTime().toString(), String.valueOf(datapoint.getValue()));
-                        System.out.println(line);
-                    });
-                    System.out.println("| ----------------------------------------------|");
+                        System.out.println("| ----------------------------------------------------------------------------------------------------------------------------------------------|");
+                        System.out.println("|           Id           |          Type          |      Location      |         Lat         |          Lon          |         Metric           |");
+                        System.out.println("| ----------------------------------------------------------------------------------------------------------------------------------------------|");
+
+                        sensorList.forEach(sensor -> {
+                            String line = String.format("|  %20s |  %20s |  %20s |  %20s |  %20s |  %20s |", String.valueOf(sensor.getId()),
+                                    sensor.getType(), sensor.getLocation(), String.valueOf(sensor.getLatitude()),
+                                    String.valueOf(sensor.getLongitude()), sensor.getMetric());
+                            System.out.println(line);
+                        });
+
+                    } else if (msg instanceof LineChartQueryParameters) {
+                    LineChartQueryParameters parameters = (LineChartQueryParameters) msg;
+                    Logger.serverRequestData(parameters);
+                    DataSeries dataSeries = queryData(parameters);
+
+                    System.out.println("LINE CHART");
+                    outputStream.writeObject(dataSeries);
+                    outputStream.reset();
+                    } else if (msg instanceof DataQueryParameters) {
+                        DataQueryParameters parameters = (DataQueryParameters) msg;
+                        Logger.serverRequestData(parameters);
+                        DataSeries dataSeries = queryData(parameters);
+                        outputStream.writeObject(dataSeries);
+                        outputStream.reset();
+                        if (dataSeries.size() != 0) {
+                            Logger.serverResponseData(parameters, dataSeries);
+
+                            System.out.println("| ----------------------------------------------|");
+                            System.out.println("|      Timestamp        |         Value         |");
+                            System.out.println("| ----------------------------------------------|");
+
+                            dataSeries.forEach((DataPoint datapoint) -> {
+                                String line = String.format("|  %20s |  %20s | ", datapoint.getTime().toString(), String.valueOf(datapoint.getValue()));
+                                System.out.println(line);
+                            });
+                            System.out.println("| ----------------------------------------------|");
+                        } else {
+                            Logger.err("Two or more missing DataPoints existing after performing operation for requested interval");
+                        }
+                    }
                 }
-                else {
-                    Logger.err("Two or more missing DataPoints existing after performing operation for requested interval");
-                }
+            } catch (IOException | ClassNotFoundException e) {
+                e.printStackTrace();
             }
-        } catch (IOException | ClassNotFoundException e) {
-            e.printStackTrace();
-        }
-
     }
 
     private DataSeries queryData(DataQueryParameters parameters) throws IOException {
@@ -558,4 +574,8 @@ public class ServerThread extends Thread {
             }
         }
     }
+
+
+
+
 }

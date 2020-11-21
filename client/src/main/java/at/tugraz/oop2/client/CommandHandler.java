@@ -2,10 +2,7 @@ package at.tugraz.oop2.client;
 
 import at.tugraz.oop2.Logger;
 import at.tugraz.oop2.Util;
-import at.tugraz.oop2.data.DataPoint;
-import at.tugraz.oop2.data.DataQueryParameters;
-import at.tugraz.oop2.data.DataSeries;
-import at.tugraz.oop2.data.Sensor;
+import at.tugraz.oop2.data.*;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -26,6 +23,8 @@ public final class CommandHandler {
         commands.put("help", this::displayHelp);
         commands.put("ls", this::listSensors);
         commands.put("data", this::queryData);
+        commands.put("linechart", this::queryLineChart);
+        commands.put("scatterplot", this::queryScatterplot);
     }
 
     private static void validateArgc(String[] args, int argc) throws CommandException {
@@ -51,6 +50,7 @@ public final class CommandHandler {
             return;
         }
         try {
+            System.out.println("HANDLING STH");
             cmd.handle(Arrays.copyOfRange(args, 1, args.length));
         } catch (final CommandException | NumberFormatException ex) {
             System.out.println("Error: " + ex.getMessage());
@@ -138,6 +138,28 @@ public final class CommandHandler {
 
     private void queryLineChart(String... args) throws Exception {
         //TODO input parsing similar to above
+        validateArgc(args, 4, 6);
+        final int sensorId = Integer.parseUnsignedInt(args[0]);
+        final String type = args[1];
+        final LocalDateTime from = Util.stringToLocalDateTime(args[2]);
+        final LocalDateTime to = Util.stringToLocalDateTime(args[3]);
+        final DataSeries.Operation operation = args.length < 5 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[4].toUpperCase());
+        final long interval = args.length < 6 ? from.until(to, ChronoUnit.SECONDS) : Util.stringToInterval(args[5]);
+
+        final LineChartQueryParameters lineChartQueryParameters = new LineChartQueryParameters(sensorId, type, from, to, operation, interval);
+        Logger.clientRequestData(lineChartQueryParameters);
+        final Picture picture = conn.queryLineChart(lineChartQueryParameters).get();
+
+        if(picture == null) {
+            Logger.err("No response from the server.");
+        } else {
+            //Logger.clientCreateLinechartImage("ime.png", series);
+            picture.save("ime.png");
+            System.out.println("| ----------------------------------------------|");
+            System.out.println("| END LINE PLOT |");
+            System.out.println("| ----------------------------------------------|");
+
+        }
         //png can be created using the Picture class
     }
 

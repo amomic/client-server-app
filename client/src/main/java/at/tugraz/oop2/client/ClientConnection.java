@@ -1,10 +1,7 @@
 package at.tugraz.oop2.client;
 
 import at.tugraz.oop2.Logger;
-import at.tugraz.oop2.data.DataQueryParameters;
-import at.tugraz.oop2.data.DataSeries;
-import at.tugraz.oop2.data.Sensor;
-import at.tugraz.oop2.data.WrapperLsObject;
+import at.tugraz.oop2.data.*;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -97,6 +94,17 @@ public final class ClientConnection implements AutoCloseable {
         seriesCompletableFuture.complete(dataSeries);
         return seriesCompletableFuture;
     }
+
+    public CompletableFuture<Picture> queryLineChart(LineChartQueryParameters lineChartQueryParameters) throws IOException, ClassNotFoundException {
+        CompletableFuture<Picture> pictureCompletableFuture = new CompletableFuture<>();
+        outputStream.writeObject(lineChartQueryParameters);
+
+        Picture picture = (Picture) inputStream.readObject();
+        outputStream.reset();
+        pictureCompletableFuture.complete(picture);
+        return pictureCompletableFuture;
+    }
+
 
     @FunctionalInterface
     public interface ConnectionEventHandler {
