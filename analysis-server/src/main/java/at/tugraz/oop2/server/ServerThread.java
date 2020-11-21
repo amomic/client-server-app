@@ -12,8 +12,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
-import java.util.*;
-import java.awt.*;
 
 
 // TODO: scatterplot, linechart, caching
@@ -108,18 +106,19 @@ public class ServerThread extends Thread {
         Sensor sensor = new Sensor(parameters.getSensorId(), "", 2d,3d,"", parameters.getMetric());
         List<DataPoint> dataPoints = new ArrayList<>();
         Set<DataPoint> result = new TreeSet<>();
+        List<Double> interpolationResultTracking = new ArrayList<>();
 
         getData(file, parameters, sensor, dataPoints);
 
-
-        // TODO data command: kad uzme from prvu liniju csv fajla nikad je ne include
-        // TODO data command: interpolation
+        // TODO data command: kad uzme from prvu liniju csv fajla nikad je ne include -> ASK
+        // TODO data command: interpolation -> CHECK IF IT IS OK
 
         if(parameters.getOperation() == null) {
             result.addAll(dataPoints);
         } else {
             switch (parameters.getOperation()) {
                 // TODO: check if none really should do this
+                // TODO: should none interpolate
                 case NONE:
                     int missingMeasureCounter = 0;
 
@@ -150,11 +149,7 @@ public class ServerThread extends Thread {
 
                             missingMeasureCounter = 0;
                         } else {
-                            if(missingMeasureCounter == 1) {
-                                // TODO: implement interpolation
-
-                            } else if(missingMeasureCounter == 2) {
-                                // TODO: svaki put kada vrati error ne treba da printa tabele ni s client ni s server side
+                            if(missingMeasureCounter == 2) {
                                 result.clear();
                                 break;
                             }
@@ -165,12 +160,14 @@ public class ServerThread extends Thread {
 
                 case MIN:
                     missingMeasureCounter = 0;
+                    boolean hadInterpolation = false;
+                    int interpolationIdx = 0;
+                    Double interpolationPoint = null;
 
                     for(LocalDateTime start = parameters.getFrom();
                         start.compareTo(parameters.getTo()) < 0;
                         start = start.plusSeconds(parameters.getInterval())
                     ) {
-
                         final LocalDateTime currentStartTime = start;
 
                         TreeSet<DataPoint> dataPointsInInterval =  dataPoints.stream()
@@ -180,6 +177,7 @@ public class ServerThread extends Thread {
 
                         if(start.plusSeconds(parameters.getInterval()).compareTo(parameters.getTo()) > 0) {
                             // TODO: ask if this is ok
+                            // TODO: if there are no data points in last interval should we interepolate?
                             if(dataPointsInInterval.size() == 0) {
                                 break;
                             } else {
@@ -191,7 +189,10 @@ public class ServerThread extends Thread {
                                 DataPoint minData = dataPoints.stream()
                                         .filter(dataPoint -> dataPoint.getValue() == min)
                                         .findFirst().orElse(new DataPoint(LocalDateTime.now(), min));
+                                interpolationResultTracking.add(min);
+
                                 result.add(minData);
+                                interpolationIdx++;
                                 break;
                             }
                         }
@@ -205,15 +206,28 @@ public class ServerThread extends Thread {
                             DataPoint minData = dataPoints.stream()
                                     .filter(dataPoint -> dataPoint.getValue() == min)
                                     .findFirst().orElse(new DataPoint(LocalDateTime.now(), min));
+                            interpolationResultTracking.add(min);
+
+                            if(hadInterpolation == true) {
+                                interpolationPoint = (interpolationPoint + min) / 2;
+
+                                double finalInterpolation = interpolationPoint;
+                                DataPoint intData = dataPoints.stream()
+                                        .filter(dataPoint -> dataPoint.getValue() == finalInterpolation)
+                                        .findFirst().orElse(new DataPoint(currentStartTime, interpolationPoint));
+                                result.add(intData);
+                                hadInterpolation = false;
+                            }
+
                             result.add(minData);
+                            interpolationIdx++;
 
                             missingMeasureCounter = 0;
                         } else {
-                            if(missingMeasureCounter == 1) {
-                                // TODO: implement interpolation
+                            hadInterpolation = true;
+                            interpolationPoint = interpolationResultTracking.get(interpolationIdx - 1);
 
-                            } else if(missingMeasureCounter == 2) {
-                                // TODO: svaki put kada vrati error ne treba da printa tabele ni s client ni s server side
+                            if(missingMeasureCounter == 2) {
                                 result.clear();
                                 break;
                             }
@@ -224,6 +238,9 @@ public class ServerThread extends Thread {
 
                 case MAX:
                     missingMeasureCounter = 0;
+                    hadInterpolation = false;
+                    interpolationIdx = 0;
+                    interpolationPoint = null;
 
                     for(LocalDateTime start = parameters.getFrom();
                         start.compareTo(parameters.getTo()) < 0;
@@ -264,15 +281,26 @@ public class ServerThread extends Thread {
                             DataPoint maxData = dataPoints.stream()
                                     .filter(dataPoint -> dataPoint.getValue() == max)
                                     .findFirst().orElse(new DataPoint(LocalDateTime.now(), max));
+
+                            if(hadInterpolation == true) {
+                                interpolationPoint = (interpolationPoint + max) / 2;
+
+                                double finalInterpolation = interpolationPoint;
+                                DataPoint intData = dataPoints.stream()
+                                        .filter(dataPoint -> dataPoint.getValue() == finalInterpolation)
+                                        .findFirst().orElse(new DataPoint(currentStartTime, interpolationPoint));
+                                result.add(intData);
+                                hadInterpolation = false;
+                            }
+
                             result.add(maxData);
 
                             missingMeasureCounter = 0;
                         } else {
-                            if(missingMeasureCounter == 1) {
-                                // TODO: implement interpolation
+                            hadInterpolation = true;
+                            interpolationPoint = interpolationResultTracking.get(interpolationIdx - 1);
 
-                            } else if(missingMeasureCounter == 2) {
-                                // TODO: svaki put kada vrati error ne treba da printa tabele ni s client ni s server side
+                            if(missingMeasureCounter == 2) {
                                 result.clear();
                                 break;
                             }
@@ -283,6 +311,9 @@ public class ServerThread extends Thread {
 
                 case MEAN:
                    missingMeasureCounter = 0;
+                    hadInterpolation = false;
+                    interpolationIdx = 0;
+                    interpolationPoint = null;
 
                     for(LocalDateTime start = parameters.getFrom();
                         start.compareTo(parameters.getTo()) < 0;
@@ -323,15 +354,26 @@ public class ServerThread extends Thread {
                             DataPoint avgData = dataPoints.stream()
                                     .filter(dataPoint -> dataPoint.getValue() == avg)
                                     .findFirst().orElse(new DataPoint(LocalDateTime.now(), avg));
+
+                            if(hadInterpolation == true) {
+                                interpolationPoint = (interpolationPoint + avg) / 2;
+
+                                double finalInterpolation = interpolationPoint;
+                                DataPoint intData = dataPoints.stream()
+                                        .filter(dataPoint -> dataPoint.getValue() == finalInterpolation)
+                                        .findFirst().orElse(new DataPoint(currentStartTime, interpolationPoint));
+                                result.add(intData);
+                                hadInterpolation = false;
+                            }
+
                             result.add(avgData);
 
                             missingMeasureCounter = 0;
                         } else {
-                            if(missingMeasureCounter == 1) {
-                                // TODO: implement interpolation
+                            hadInterpolation = true;
+                            interpolationPoint = interpolationResultTracking.get(interpolationIdx - 1);
 
-                            } else if(missingMeasureCounter == 2) {
-                                // TODO: svaki put kada vrati error ne treba da printa tabele ni s client ni s server side
+                            if(missingMeasureCounter == 2) {
                                 result.clear();
                                 break;
                             }
@@ -343,6 +385,9 @@ public class ServerThread extends Thread {
                 case MEDIAN:
                     double median = 0;
                     missingMeasureCounter = 0;
+                    hadInterpolation = false;
+                    interpolationIdx = 0;
+                    interpolationPoint = null;
 
                     for(LocalDateTime start = parameters.getFrom();
                         start.compareTo(parameters.getTo()) < 0;
@@ -422,15 +467,26 @@ public class ServerThread extends Thread {
                             DataPoint medData = dataPoints.stream()
                                     .filter(dataPoint -> dataPoint.getValue() == finalMedian)
                                     .findFirst().orElse(new DataPoint(LocalDateTime.now(), median));
+
+                            if(hadInterpolation == true) {
+                                interpolationPoint = (interpolationPoint + median) / 2;
+
+                                double finalInterpolation = interpolationPoint;
+                                DataPoint intData = dataPoints.stream()
+                                        .filter(dataPoint -> dataPoint.getValue() == finalInterpolation)
+                                        .findFirst().orElse(new DataPoint(currentStartTime, interpolationPoint));
+                                result.add(intData);
+                                hadInterpolation = false;
+                            }
+
                             result.add(medData);
 
                             missingMeasureCounter = 0;
                         } else {
-                            if(missingMeasureCounter == 1) {
-                                // TODO: implement interpolation
+                            hadInterpolation = true;
+                            interpolationPoint = interpolationResultTracking.get(interpolationIdx - 1);
 
-                            } else if(missingMeasureCounter == 2) {
-                                // TODO: svaki put kada vrati error ne treba da printa tabele ni s client ni s server side
+                            if(missingMeasureCounter == 2) {
                                 result.clear();
                                 break;
                             }
