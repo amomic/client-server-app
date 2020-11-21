@@ -118,9 +118,11 @@ public final class CommandHandler {
         final DataQueryParameters dataQueryParameters = new DataQueryParameters(sensorId, type, from, to, operation, interval);
         Logger.clientRequestData(dataQueryParameters);
         final DataSeries series = conn.queryData(dataQueryParameters).get();
-        Logger.clientResponseData(dataQueryParameters, series);
 
-      //  if(series.first().getValue() != -1) {
+        if(series.size() == 0) {
+            Logger.err("No response from the server.");
+        } else {
+            Logger.clientResponseData(dataQueryParameters, series);
             System.out.println("| ----------------------------------------------|");
             System.out.println("|      Timestamp        |         Value         |");
             System.out.println("| ----------------------------------------------|");
@@ -130,9 +132,7 @@ public final class CommandHandler {
                 System.out.println(line);
             });
             System.out.println("| ----------------------------------------------|");
-     //   } else {
-      //      System.out.println("ERROR!");
-       // }
+        }
         //TODO print Sensors (not just use the Logger::clientResponseData) -> DONE
     }
 
