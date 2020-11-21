@@ -14,8 +14,6 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 
-// TODO data command: interpolation + missing sequence
-
 // TODO: scatterplot, linechart, caching
 
 public class ServerThread extends Thread {
@@ -65,6 +63,16 @@ public class ServerThread extends Thread {
                 outputStream.writeObject(dataSeries);
                 outputStream.reset();
                 Logger.serverResponseData(parameters, dataSeries);
+
+                System.out.println("| ----------------------------------------------|");
+                System.out.println("|      Timestamp        |         Value         |");
+                System.out.println("| ----------------------------------------------|");
+
+                dataSeries.forEach((DataPoint datapoint) -> {
+                    String line = String.format("|  %20s |  %20s | ", datapoint.getTime().toString(), String.valueOf(datapoint.getValue()));
+                    System.out.println(line);
+                });
+                System.out.println("| ----------------------------------------------|");
             }
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
@@ -85,7 +93,7 @@ public class ServerThread extends Thread {
 
         // TODO data command: kad uzme from prvu liniju csv fajla nikad je ne include
         // TODO data command: interpolation
-        // TODO data command: stop printing when error occurs
+        // TODO data command: stop printing when error occurs -> check with 1s interval e.g.
 
         if(parameters.getOperation() == null) {
             result.addAll(dataPoints);
@@ -144,7 +152,7 @@ public class ServerThread extends Thread {
                             } else if(missingMeasureCounter == 2) {
                                 // TODO: svaki put kada vrati error ne treba da printa tabele ni s client ni s server side
                                 //result.clear();
-                               // result.add(new DataPoint(LocalDateTime.now(), -1));
+                                //result.add(new DataPoint(LocalDateTime.now(), 1));
                                 Logger.err("Two or more missing DataPoints in min operation for requested interval");
                                 break;
                             }
