@@ -31,7 +31,7 @@ public final class AnalysisServer {
             }
         } catch (IOException ioException) {
             Logger.info("Something went wrong with new client connection!");
-            ioException.printStackTrace();
+            System.err.println("Couldn't connect to server!");
         }
 
     }

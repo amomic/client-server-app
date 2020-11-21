@@ -13,7 +13,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-
 // TODO: scatterplot, linechart, caching
 
 public class ServerThread extends Thread {
@@ -35,7 +34,6 @@ public class ServerThread extends Thread {
                 ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
                 ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
                 Object msg = null;
-
 
                 while (true) {
                     synchronized (inputStream) {
@@ -105,8 +103,12 @@ public class ServerThread extends Thread {
                         }
                     }
                 }
-            } catch (IOException | ClassNotFoundException e) {
-                e.printStackTrace();
+            } catch (IOException e) {
+                Logger.info("Interrupted I/O operations -> you got IOException");
+                System.err.println("Couldn't connect to server!");
+            } catch (ClassNotFoundException e) {
+                Logger.info("No definition for class with specified name found -> you got ClassNotFoundException");
+                System.err.println("Class definition missing!");// TODO: print some more reasonable things, never call this
             }
     }
 
@@ -121,56 +123,17 @@ public class ServerThread extends Thread {
 
         getData(file, parameters, sensor, dataPoints);
 
-        // TODO data command: kad uzme from prvu liniju csv fajla nikad je ne include -> ASK
-        // TODO data command: interpolation -> CHECK IF IT IS OK
-
+        // TODO data command: interpolation -> CHECK IF IT IS OK for different intervals and timestamps
         if(parameters.getOperation() == null) {
             result.addAll(dataPoints);
         } else {
             switch (parameters.getOperation()) {
-                // TODO: check if none really should do this
-                // TODO: should none interpolate
                 case NONE:
-                    int missingMeasureCounter = 0;
-
-                    for(LocalDateTime start = parameters.getFrom();
-                        start.compareTo(parameters.getTo()) < 0;
-                        start = start.plusSeconds(parameters.getInterval())
-                    ) {
-
-                        final LocalDateTime currentStartTime = start;
-
-                        TreeSet<DataPoint> dataPointsInInterval =  dataPoints.stream()
-                                .filter((dataPoint) -> currentStartTime.compareTo(dataPoint.getTime()) <= 0 &&
-                                        currentStartTime.plusSeconds(parameters.getInterval()).compareTo(dataPoint.getTime()) > 0)
-                                .collect(Collectors.toCollection(TreeSet::new));
-
-                        if(start.plusSeconds(parameters.getInterval()).compareTo(parameters.getTo()) > 0) {
-                            // TODO: ask if this is ok
-                            if(dataPointsInInterval.size() == 0) {
-                                break;
-                            } else {
-                                result.addAll(dataPoints);
-                                break;
-                            }
-                        }
-
-                        if(!dataPointsInInterval.isEmpty()) {
-                            result.addAll(dataPoints);
-
-                            missingMeasureCounter = 0;
-                        } else {
-                            if(missingMeasureCounter == 2) {
-                                result.clear();
-                                break;
-                            }
-                            missingMeasureCounter++;
-                        }
-                    }
+                    result.addAll(dataPoints);
                     break;
 
                 case MIN:
-                    missingMeasureCounter = 0;
+                    int missingMeasureCounter = 0;
                     boolean hadInterpolation = false;
                     int interpolationIdx = 0;
                     Double interpolationPoint = null;
@@ -187,9 +150,19 @@ public class ServerThread extends Thread {
                                 .collect(Collectors.toCollection(TreeSet::new));
 
                         if(start.plusSeconds(parameters.getInterval()).compareTo(parameters.getTo()) > 0) {
-                            // TODO: ask if this is ok
-                            // TODO: if there are no data points in last interval should we interepolate?
+
                             if(dataPointsInInterval.size() == 0) {
+                                if(missingMeasureCounter == 2) {
+                                    result.clear();
+                                    break;
+                                }
+                                interpolationPoint = (interpolationResultTracking.get(interpolationIdx - 1) + interpolationResultTracking.get(interpolationIdx - 2)) / 2;
+
+                                double finalInterpolation = interpolationPoint;
+                                DataPoint intData = dataPoints.stream()
+                                        .filter(dataPoint -> dataPoint.getValue() == finalInterpolation)
+                                        .findFirst().orElse(new DataPoint(currentStartTime, interpolationPoint));
+                                result.add(intData);
                                 break;
                             } else {
                                 double min = dataPointsInInterval.stream()
@@ -257,7 +230,6 @@ public class ServerThread extends Thread {
                         start.compareTo(parameters.getTo()) < 0;
                         start = start.plusSeconds(parameters.getInterval())
                     ) {
-
                         final LocalDateTime currentStartTime = start;
 
                         TreeSet<DataPoint> dataPointsInInterval =  dataPoints.stream()
@@ -266,8 +238,19 @@ public class ServerThread extends Thread {
                                 .collect(Collectors.toCollection(TreeSet::new));
 
                         if(start.plusSeconds(parameters.getInterval()).compareTo(parameters.getTo()) > 0) {
-                            // TODO: ask if this is ok
+
                             if(dataPointsInInterval.size() == 0) {
+                                if(missingMeasureCounter == 2) {
+                                    result.clear();
+                                    break;
+                                }
+                                interpolationPoint = (interpolationResultTracking.get(interpolationIdx - 1) + interpolationResultTracking.get(interpolationIdx - 2)) / 2;
+
+                                double finalInterpolation = interpolationPoint;
+                                DataPoint intData = dataPoints.stream()
+                                        .filter(dataPoint -> dataPoint.getValue() == finalInterpolation)
+                                        .findFirst().orElse(new DataPoint(currentStartTime, interpolationPoint));
+                                result.add(intData);
                                 break;
                             } else {
                                 double max = dataPointsInInterval.stream()
@@ -278,7 +261,10 @@ public class ServerThread extends Thread {
                                 DataPoint maxData = dataPoints.stream()
                                         .filter(dataPoint -> dataPoint.getValue() == max)
                                         .findFirst().orElse(new DataPoint(LocalDateTime.now(), max));
+                                interpolationResultTracking.add(max);
+
                                 result.add(maxData);
+                                interpolationIdx++;
                                 break;
                             }
                         }
@@ -292,6 +278,7 @@ public class ServerThread extends Thread {
                             DataPoint maxData = dataPoints.stream()
                                     .filter(dataPoint -> dataPoint.getValue() == max)
                                     .findFirst().orElse(new DataPoint(LocalDateTime.now(), max));
+                            interpolationResultTracking.add(max);
 
                             if(hadInterpolation == true) {
                                 interpolationPoint = (interpolationPoint + max) / 2;
@@ -305,6 +292,7 @@ public class ServerThread extends Thread {
                             }
 
                             result.add(maxData);
+                            interpolationIdx++;
 
                             missingMeasureCounter = 0;
                         } else {
@@ -321,7 +309,7 @@ public class ServerThread extends Thread {
                     break;
 
                 case MEAN:
-                   missingMeasureCounter = 0;
+                    missingMeasureCounter = 0;
                     hadInterpolation = false;
                     interpolationIdx = 0;
                     interpolationPoint = null;
@@ -330,7 +318,6 @@ public class ServerThread extends Thread {
                         start.compareTo(parameters.getTo()) < 0;
                         start = start.plusSeconds(parameters.getInterval())
                     ) {
-
                         final LocalDateTime currentStartTime = start;
 
                         TreeSet<DataPoint> dataPointsInInterval =  dataPoints.stream()
@@ -339,8 +326,19 @@ public class ServerThread extends Thread {
                                 .collect(Collectors.toCollection(TreeSet::new));
 
                         if(start.plusSeconds(parameters.getInterval()).compareTo(parameters.getTo()) > 0) {
-                            // TODO: ask if this is ok
+
                             if(dataPointsInInterval.size() == 0) {
+                                if(missingMeasureCounter == 2) {
+                                    result.clear();
+                                    break;
+                                }
+                                interpolationPoint = (interpolationResultTracking.get(interpolationIdx - 1) + interpolationResultTracking.get(interpolationIdx - 2)) / 2;
+
+                                double finalInterpolation = interpolationPoint;
+                                DataPoint intData = dataPoints.stream()
+                                        .filter(dataPoint -> dataPoint.getValue() == finalInterpolation)
+                                        .findFirst().orElse(new DataPoint(currentStartTime, interpolationPoint));
+                                result.add(intData);
                                 break;
                             } else {
                                 double avg = dataPointsInInterval.stream()
@@ -351,7 +349,10 @@ public class ServerThread extends Thread {
                                 DataPoint avgData = dataPoints.stream()
                                         .filter(dataPoint -> dataPoint.getValue() == avg)
                                         .findFirst().orElse(new DataPoint(LocalDateTime.now(), avg));
+                                interpolationResultTracking.add(avg);
+
                                 result.add(avgData);
+                                interpolationIdx++;
                                 break;
                             }
                         }
@@ -365,6 +366,7 @@ public class ServerThread extends Thread {
                             DataPoint avgData = dataPoints.stream()
                                     .filter(dataPoint -> dataPoint.getValue() == avg)
                                     .findFirst().orElse(new DataPoint(LocalDateTime.now(), avg));
+                            interpolationResultTracking.add(avg);
 
                             if(hadInterpolation == true) {
                                 interpolationPoint = (interpolationPoint + avg) / 2;
@@ -378,6 +380,7 @@ public class ServerThread extends Thread {
                             }
 
                             result.add(avgData);
+                            interpolationIdx++;
 
                             missingMeasureCounter = 0;
                         } else {
@@ -414,7 +417,19 @@ public class ServerThread extends Thread {
                                 .collect(Collectors.toCollection(TreeSet::new));
 
                         if(start.plusSeconds(parameters.getInterval()).compareTo(parameters.getTo()) > 0) {
+
                             if(dataPointsInInterval.size() == 0) {
+                                if(missingMeasureCounter == 2) {
+                                    result.clear();
+                                    break;
+                                }
+                                interpolationPoint = (interpolationResultTracking.get(interpolationIdx - 1) + interpolationResultTracking.get(interpolationIdx - 2)) / 2;
+
+                                double finalInterpolation = interpolationPoint;
+                                DataPoint intData = dataPoints.stream()
+                                        .filter(dataPoint -> dataPoint.getValue() == finalInterpolation)
+                                        .findFirst().orElse(new DataPoint(currentStartTime, interpolationPoint));
+                                result.add(intData);
                                 break;
                             } else {
                                 double[] medianList = dataPointsInInterval.stream()
@@ -424,7 +439,6 @@ public class ServerThread extends Thread {
                                 for (double element : medianList) {
                                     sum++;
                                 }
-
                                 if (sum == 1) {
                                     median = medianList[0];
                                 } else if (sum == 2) {
@@ -434,7 +448,6 @@ public class ServerThread extends Thread {
                                         int idx1 = sum / 2;
                                         int idx2 = sum / 2 - 1;
                                         median = (medianList[idx1] + medianList[idx2]) / 2;
-                                        ;
                                     } else {
                                         int idx = sum / 2;
                                         median = medianList[idx];
@@ -445,7 +458,10 @@ public class ServerThread extends Thread {
                                 DataPoint medData = dataPoints.stream()
                                         .filter(dataPoint -> dataPoint.getValue() == finalMedian)
                                         .findFirst().orElse(new DataPoint(LocalDateTime.now(), median));
+                                interpolationResultTracking.add(median);
+
                                 result.add(medData);
+                                interpolationIdx++;
                                 break;
                             }
                         }
@@ -458,7 +474,7 @@ public class ServerThread extends Thread {
                             for(double element: medianList) {
                                 sum++;
                             }
-                            // FIXME: also weird stuff happening with a few first lines of csv file
+
                             if(sum == 1) {
                                 median = medianList[0];
                             } else if(sum == 2) {
@@ -478,6 +494,7 @@ public class ServerThread extends Thread {
                             DataPoint medData = dataPoints.stream()
                                     .filter(dataPoint -> dataPoint.getValue() == finalMedian)
                                     .findFirst().orElse(new DataPoint(LocalDateTime.now(), median));
+                            interpolationResultTracking.add(median);
 
                             if(hadInterpolation == true) {
                                 interpolationPoint = (interpolationPoint + median) / 2;
@@ -491,6 +508,7 @@ public class ServerThread extends Thread {
                             }
 
                             result.add(medData);
+                            interpolationIdx++;
 
                             missingMeasureCounter = 0;
                         } else {
@@ -578,61 +596,59 @@ public class ServerThread extends Thread {
                         boolean ignoreFirst = true;
                         while ((line = br.readLine()) != null) {
                             if (ignoreFirst) {
-                                br.readLine();
+                                line = br.readLine();
                                 ignoreFirst = false;
-                            } else {
-                                String[] objects = line.split(";",-1);
-                                int id = Integer.parseInt(objects[0]);
-                                String type = objects[1];
-                                String location = objects[2];
-                                double lat = Double.parseDouble(objects[3]);
-                                double lon = Double.parseDouble(objects[4]);
-                                LocalDateTime time = Util.stringToLocalDateTime(objects[5]);
-                                sensor = new Sensor(id,type,lat,lon,location, metric);
+                            }
+                            String[] objects = line.split(";",-1);
+                            int id = Integer.parseInt(objects[0]);
+                            String type = objects[1];
+                            String location = objects[2];
+                            double lat = Double.parseDouble(objects[3]);
+                            double lon = Double.parseDouble(objects[4]);
+                            LocalDateTime time = Util.stringToLocalDateTime(objects[5]);
+                            sensor = new Sensor(id,type,lat,lon,location, metric);
 
-                                // FIXME: weird thing happens on one input time
-                                if (time.isEqual(parameters.getFrom()) || (time.isAfter(parameters.getFrom()) && time.isBefore(parameters.getTo()))) {
-                                    switch (type) {
-                                        case "SDS011":
-                                            if (metric.equals("P1")) {
-                                                // index = 6
-                                                double metricValue = Double.parseDouble(objects[6]);
-                                                DataPoint dataPoint = new DataPoint(time, metricValue);
-                                                dataPoints.add(dataPoint);
-                                            } else if (metric.equals("P2")) {
-                                                // index = 9
-                                                double metricValue = Double.parseDouble(objects[9]);
-                                                DataPoint dataPoint = new DataPoint(time, metricValue);
-                                                dataPoints.add(dataPoint);
-                                            }
-                                            break;
-                                        case "DHT22":
-                                            if (metric.equals("temperature")) {
-                                                // index = 6
-                                                double metricValue = Double.parseDouble(objects[6]);
-                                                DataPoint dataPoint = new DataPoint(time, metricValue);
-                                                dataPoints.add(dataPoint);
-                                            } else if (metric.equals("humidity")) {
-                                                // index = 7
-                                                double metricValue = Double.parseDouble(objects[7]);
-                                                DataPoint dataPoint = new DataPoint(time, metricValue);
-                                                dataPoints.add(dataPoint);
-                                            }
-                                            break;
-                                        case "BME280":
-                                            if (metric.equals("temperature")) {
-                                                // index = 9
-                                                double metricValue = Double.parseDouble(objects[9]);
-                                                DataPoint dataPoint = new DataPoint(time, metricValue);
-                                                dataPoints.add(dataPoint);
-                                            } else if (metric.equals("humidity")) {
-                                                // index = 10
-                                                double metricValue = Double.parseDouble(objects[10]);
-                                                DataPoint dataPoint = new DataPoint(time, metricValue);
-                                                dataPoints.add(dataPoint);
-                                            }
-                                            break;
-                                    }
+                            if (time.isEqual(parameters.getFrom()) || (time.isAfter(parameters.getFrom()) && time.isBefore(parameters.getTo()))) {
+                                switch (type) {
+                                    case "SDS011":
+                                        if (metric.equals("P1")) {
+                                            // index = 6
+                                            double metricValue = Double.parseDouble(objects[6]);
+                                            DataPoint dataPoint = new DataPoint(time, metricValue);
+                                            dataPoints.add(dataPoint);
+                                        } else if (metric.equals("P2")) {
+                                            // index = 9
+                                            double metricValue = Double.parseDouble(objects[9]);
+                                            DataPoint dataPoint = new DataPoint(time, metricValue);
+                                            dataPoints.add(dataPoint);
+                                        }
+                                        break;
+                                    case "DHT22":
+                                        if (metric.equals("temperature")) {
+                                            // index = 6
+                                            double metricValue = Double.parseDouble(objects[6]);
+                                            DataPoint dataPoint = new DataPoint(time, metricValue);
+                                            dataPoints.add(dataPoint);
+                                        } else if (metric.equals("humidity")) {
+                                            // index = 7
+                                            double metricValue = Double.parseDouble(objects[7]);
+                                            DataPoint dataPoint = new DataPoint(time, metricValue);
+                                            dataPoints.add(dataPoint);
+                                        }
+                                        break;
+                                    case "BME280":
+                                        if (metric.equals("temperature")) {
+                                            // index = 9
+                                            double metricValue = Double.parseDouble(objects[9]);
+                                            DataPoint dataPoint = new DataPoint(time, metricValue);
+                                            dataPoints.add(dataPoint);
+                                        } else if (metric.equals("humidity")) {
+                                            // index = 10
+                                            double metricValue = Double.parseDouble(objects[10]);
+                                            DataPoint dataPoint = new DataPoint(time, metricValue);
+                                            dataPoints.add(dataPoint);
+                                        }
+                                        break;
                                 }
                             }
                         }
@@ -641,7 +657,4 @@ public class ServerThread extends Thread {
             }
         }
     }
-
-
-
 }

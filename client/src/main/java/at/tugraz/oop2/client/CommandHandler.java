@@ -50,7 +50,7 @@ public final class CommandHandler {
             return;
         }
         try {
-            System.out.println("HANDLING STH");
+            Logger.info("Client command entered!");
             cmd.handle(Arrays.copyOfRange(args, 1, args.length));
         } catch (final CommandException | NumberFormatException ex) {
             System.out.println("Error: " + ex.getMessage());
