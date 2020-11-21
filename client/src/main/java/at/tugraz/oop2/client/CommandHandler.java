@@ -138,12 +138,12 @@ public final class CommandHandler {
 
     private void queryLineChart(String... args) throws Exception {
         //TODO input parsing similar to above
-        validateArgc(args, 4, 6);
+        validateArgc(args, 4, 5);
         final int sensorId = Integer.parseUnsignedInt(args[0]);
         final String type = args[1];
         final LocalDateTime from = Util.stringToLocalDateTime(args[2]);
         final LocalDateTime to = Util.stringToLocalDateTime(args[3]);
-        final DataSeries.Operation operation = args.length < 5 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[4].toUpperCase());
+        final DataSeries.Operation operation = args.length < 6 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[4].toUpperCase());
         final long interval = args.length < 6 ? from.until(to, ChronoUnit.SECONDS) : Util.stringToInterval(args[5]);
 
         final LineChartQueryParameters lineChartQueryParameters = new LineChartQueryParameters(sensorId, type, from, to, operation, interval);
@@ -154,9 +154,9 @@ public final class CommandHandler {
             Logger.err("No response from the server.");
         } else {
             //Logger.clientCreateLinechartImage("ime.png", series);
-            picture.save("ime.png");
+            picture.save("linechart.png");
             System.out.println("| ----------------------------------------------|");
-            System.out.println("| END LINE PLOT |");
+            System.out.println("| END LINECHART |");
             System.out.println("| ----------------------------------------------|");
 
         }
@@ -165,6 +165,31 @@ public final class CommandHandler {
 
     private void queryScatterplot(String... args) throws Exception {
         //TODO input parsing similar to above
+        validateArgc(args, 6, 8);
+        final int sensorId1 = Integer.parseUnsignedInt(args[0]);
+        final int sensorId2 = Integer.parseUnsignedInt(args[2]);
+        final String type1 = args[1];
+        final String type2 = args[3];
+        final LocalDateTime from = Util.stringToLocalDateTime(args[4]);
+        final LocalDateTime to = Util.stringToLocalDateTime(args[5]);
+        final DataSeries.Operation operation = args.length < 8 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[6].toUpperCase());
+        final long interval = args.length < 8 ? from.until(to, ChronoUnit.SECONDS) : Util.stringToInterval(args[7]);
+
+        final ScatterPlotQueryParameters scatterPlotQueryParameters = new ScatterPlotQueryParameters(sensorId1,
+                type1, from, to, operation, interval, sensorId2, type2);
+        Logger.clientRequestData(scatterPlotQueryParameters);
+        final Picture picture = conn.queryScatterPlot(scatterPlotQueryParameters).get();
+
+        if(picture == null) {
+            Logger.err("No response from the server.");
+        } else {
+            //Logger.clientCreateLinechartImage("ime.png", series);
+            picture.save("scatterplot.png");
+            System.out.println("| ----------------------------------------------|");
+            System.out.println("| END SCATTERPLOT |");
+            System.out.println("| ----------------------------------------------|");
+
+        }
         //png can be created using the Picture class
     }
 

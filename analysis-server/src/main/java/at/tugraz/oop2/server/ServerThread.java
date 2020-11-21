@@ -68,10 +68,21 @@ public class ServerThread extends Thread {
                     Logger.serverRequestData(parameters);
                     DataSeries dataSeries = queryData(parameters);
 
-                    System.out.println("LINE CHART");
+                    System.out.println("LINECHART");
                     outputStream.writeObject(dataSeries);
                     outputStream.reset();
-                    } else if (msg instanceof DataQueryParameters) {
+                    } else if (msg instanceof ScatterPlotQueryParameters)
+                    {
+                        ScatterPlotQueryParameters parameters = (ScatterPlotQueryParameters) msg;
+                        Logger.serverRequestData(parameters);
+                        DataSeries dataSeries = queryData(parameters);
+
+                        System.out.println("SCATTERPLOT");
+                        outputStream.writeObject(dataSeries);
+                        outputStream.reset();
+                    }
+
+                    else if (msg instanceof DataQueryParameters) {
                         DataQueryParameters parameters = (DataQueryParameters) msg;
                         Logger.serverRequestData(parameters);
                         DataSeries dataSeries = queryData(parameters);
@@ -630,7 +641,6 @@ public class ServerThread extends Thread {
             }
         }
     }
-
 
 
 
