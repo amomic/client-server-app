@@ -3,19 +3,18 @@ package at.tugraz.oop2.server;
 import at.tugraz.oop2.Logger;
 import at.tugraz.oop2.Util;
 import at.tugraz.oop2.data.*;
-import at.tugraz.oop2.data.DataPoint;
-import at.tugraz.oop2.data.DataQueryParameters;
-import at.tugraz.oop2.data.DataSeries;
-import at.tugraz.oop2.data.Sensor;
 
 import java.io.*;
 import java.net.Socket;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 
-// TODO data command: interpolation + missing sequence + median
+// TODO data command: interpolation + missing sequence
 
 // TODO: scatterplot, linechart, caching
 
@@ -53,7 +52,6 @@ public class ServerThread extends Thread {
                 System.out.println("| ----------------------------------------------------------------------------------------------------------------------------------------------|");
 
                 sensorList.forEach(sensor -> {
-                    //sensor_id;sensor_type;location;lat;lon;timestamp;P1;durP1;ratioP1;P2;durP2;ratioP2
                     String line = String.format("|  %20s |  %20s |  %20s |  %20s |  %20s |  %20s |", String.valueOf(sensor.getId()),
                             sensor.getType(), sensor.getLocation(), String.valueOf(sensor.getLatitude()),
                             String.valueOf(sensor.getLongitude()), sensor.getMetric());
@@ -80,80 +78,269 @@ public class ServerThread extends Thread {
         // this will be overwritten by getData() so we use random values to avouid null warning
         Sensor sensor = new Sensor(parameters.getSensorId(), "", 2d,3d,"", parameters.getMetric());
         List<DataPoint> dataPoints = new ArrayList<>();
-        List<DataPoint> result = new ArrayList<>();
+        Set<DataPoint> result = new TreeSet<>();
 
         getData(file, parameters, sensor, dataPoints);
 
-        switch (parameters.getOperation()) {
-            case NONE:
-                result.addAll(dataPoints);
-                break;
-            case MIN:
-                double min = dataPoints.stream()
-                        .mapToDouble(DataPoint::getValue)
-                        .min()
-                        .getAsDouble();
-                DataPoint minData = dataPoints.stream()
-                        .filter(dataPoint -> dataPoint.getValue() == min)
-                        .findFirst().orElse(new DataPoint(LocalDateTime.now(), min));
-                result.add(minData);
-                break;
-            case MAX:
-                double max = dataPoints.stream()
-                        .mapToDouble(DataPoint::getValue)
-                        .max()
-                        .getAsDouble();
-                DataPoint maxData = dataPoints.stream()
-                        .filter(dataPoint -> dataPoint.getValue() == max)
-                        .findFirst().orElse(new DataPoint(LocalDateTime.now(), max));
-                result.add(maxData);
-                break;
-            case MEAN:
-                double avg = dataPoints.stream()
-                        .mapToDouble(DataPoint::getValue)
-                        .average()
-                        .getAsDouble();
-                DataPoint avgData = dataPoints.stream()
-                        .filter(dataPoint -> dataPoint.getValue() == avg)
-                        .findFirst().orElse(new DataPoint(LocalDateTime.now(), avg));
-                result.add(avgData);
-                break;
-            case MEDIAN:
-                double median = 0;
-                int sum = 0;
-                double[] medianList = dataPoints.stream()
-                        .mapToDouble(DataPoint::getValue)
-                        .sorted()
-                        .toArray();
-                for(double i: medianList) {
-                    sum++;
-                }
-                // FIXME: also weird stuff happening with a few first lines of csv file
-                if(sum == 1) {
-                    median = medianList[0];
-                } else if(sum == 2) {
-                    median = (medianList[0] + medianList[1]) / 2;
-                } else if(sum > 2) {
-                    if(sum % 2 == 0) {
-                        int idx1 = sum / 2;
-                        int idx2 = sum / 2 - 1;
-                        median = (medianList[idx1] + medianList[idx2]) / 2;;
-                    } else {
-                        int idx = sum / 2;
-                        median = medianList[idx];
+
+        // TODO data command: kad uzme from prvu liniju csv fajla nikad je ne include
+        // TODO data command: interpolation
+        // TODO data command: median was working until i changed it with intervals, FIX it
+        // TODO data command: stop printing when error occurs
+
+        if(parameters.getOperation() == null) {
+            result.addAll(dataPoints);
+        } else {
+            switch (parameters.getOperation()) {
+                // TODO: check if none really should do this
+                case NONE:
+                    result.addAll(dataPoints);
+                    break;
+
+                case MIN:
+                    int missingMeasureCounter = 0;
+
+                    for(LocalDateTime start = parameters.getFrom();
+                        start.compareTo(parameters.getTo()) < 0;
+                        start = start.plusSeconds(parameters.getInterval())
+                    ) {
+
+                        final LocalDateTime currentStartTime = start;
+
+                        TreeSet<DataPoint> dataPointsInInterval =  dataPoints.stream()
+                                .filter((dataPoint) -> currentStartTime.compareTo(dataPoint.getTime()) <= 0 &&
+                                        currentStartTime.plusSeconds(parameters.getInterval()).compareTo(dataPoint.getTime()) > 0)
+                                .collect(Collectors.toCollection(TreeSet::new));
+
+                        if(start.plusSeconds(parameters.getInterval()).compareTo(parameters.getTo()) > 0) {
+                            // TODO: ask if this is ok
+                            double min = dataPointsInInterval.stream()
+                                    .mapToDouble(DataPoint::getValue)
+                                    .min()
+                                    .getAsDouble();
+
+                            DataPoint minData = dataPoints.stream()
+                                    .filter(dataPoint -> dataPoint.getValue() == min)
+                                    .findFirst().orElse(new DataPoint(LocalDateTime.now(), min));
+                            result.add(minData);
+                            break;
+                        }
+
+                        if(!dataPointsInInterval.isEmpty()) {
+                            double min = dataPointsInInterval.stream()
+                                    .mapToDouble(DataPoint::getValue)
+                                    .min()
+                                    .getAsDouble();
+
+                            DataPoint minData = dataPoints.stream()
+                                    .filter(dataPoint -> dataPoint.getValue() == min)
+                                    .findFirst().orElse(new DataPoint(LocalDateTime.now(), min));
+                            result.add(minData);
+
+                            missingMeasureCounter = 0;
+                        } else {
+                            if(missingMeasureCounter == 1) {
+                                // TODO: implement interpolation
+
+                            } else if(missingMeasureCounter == 2) {
+                                // TODO: svaki put kada vrati error ne treba da printa tabele ni s client ni s server side
+                                //result.clear();
+                               // result.add(new DataPoint(LocalDateTime.now(), -1));
+                                Logger.err("Two or more missing DataPoints in min operation for requested interval");
+                                break;
+                            }
+                            missingMeasureCounter++;
+                        }
                     }
-                }
-                // TODO: cast
-                double finalMedian = median;
-                DataPoint medData = dataPoints.stream()
-                        .filter(dataPoint -> dataPoint.getValue() == finalMedian)
-                        .findFirst().orElse(new DataPoint(LocalDateTime.now(), median));
-                result.add(medData);
-                break;
+                    break;
+
+                case MAX:
+                    missingMeasureCounter = 0;
+
+                    for(LocalDateTime start = parameters.getFrom();
+                        start.compareTo(parameters.getTo()) < 0;
+                        start = start.plusSeconds(parameters.getInterval())
+                    ) {
+
+                        final LocalDateTime currentStartTime = start;
+
+                        TreeSet<DataPoint> dataPointsInInterval =  dataPoints.stream()
+                                .filter((dataPoint) -> currentStartTime.compareTo(dataPoint.getTime()) <= 0 &&
+                                        currentStartTime.plusSeconds(parameters.getInterval()).compareTo(dataPoint.getTime()) > 0)
+                                .collect(Collectors.toCollection(TreeSet::new));
+
+                        if(start.plusSeconds(parameters.getInterval()).compareTo(parameters.getTo()) > 0) {
+                            // TODO: ask if this is ok
+                            double max = dataPointsInInterval.stream()
+                                    .mapToDouble(DataPoint::getValue)
+                                    .max()
+                                    .getAsDouble();
+
+                            DataPoint maxData = dataPoints.stream()
+                                    .filter(dataPoint -> dataPoint.getValue() == max)
+                                    .findFirst().orElse(new DataPoint(LocalDateTime.now(), max));
+                            result.add(maxData);
+                            break;
+                        }
+
+                        if(!dataPointsInInterval.isEmpty()) {
+                            double max = dataPointsInInterval.stream()
+                                    .mapToDouble(DataPoint::getValue)
+                                    .max()
+                                    .getAsDouble();
+
+                            DataPoint maxData = dataPoints.stream()
+                                    .filter(dataPoint -> dataPoint.getValue() == max)
+                                    .findFirst().orElse(new DataPoint(LocalDateTime.now(), max));
+                            result.add(maxData);
+
+                            missingMeasureCounter = 0;
+                        } else {
+                            if(missingMeasureCounter == 1) {
+                                // TODO: implement interpolation
+
+                            } else if(missingMeasureCounter == 2) {
+                                // TODO: svaki put kada vrati error ne treba da printa tabele ni s client ni s server side
+                                //result.clear();
+                                // result.add(new DataPoint(LocalDateTime.now(), -1));
+                                Logger.err("Two or more missing DataPoints in max operation for requested interval");
+                                break;
+                            }
+                            missingMeasureCounter++;
+                        }
+                    }
+                    break;
+
+                case MEAN:
+                   missingMeasureCounter = 0;
+
+                    for(LocalDateTime start = parameters.getFrom();
+                        start.compareTo(parameters.getTo()) < 0;
+                        start = start.plusSeconds(parameters.getInterval())
+                    ) {
+
+                        final LocalDateTime currentStartTime = start;
+
+                        TreeSet<DataPoint> dataPointsInInterval =  dataPoints.stream()
+                                .filter((dataPoint) -> currentStartTime.compareTo(dataPoint.getTime()) <= 0 &&
+                                        currentStartTime.plusSeconds(parameters.getInterval()).compareTo(dataPoint.getTime()) > 0)
+                                .collect(Collectors.toCollection(TreeSet::new));
+
+                        if(start.plusSeconds(parameters.getInterval()).compareTo(parameters.getTo()) > 0) {
+                            // TODO: ask if this is ok
+                            double avg = dataPointsInInterval.stream()
+                                    .mapToDouble(DataPoint::getValue)
+                                    .average()
+                                    .getAsDouble();
+
+                            DataPoint avgData = dataPoints.stream()
+                                    .filter(dataPoint -> dataPoint.getValue() == avg)
+                                    .findFirst().orElse(new DataPoint(LocalDateTime.now(), avg));
+                            result.add(avgData);
+                            break;
+                        }
+
+                        if(!dataPointsInInterval.isEmpty()) {
+                            double avg = dataPointsInInterval.stream()
+                                    .mapToDouble(DataPoint::getValue)
+                                    .average()
+                                    .getAsDouble();
+
+                            DataPoint avgData = dataPoints.stream()
+                                    .filter(dataPoint -> dataPoint.getValue() == avg)
+                                    .findFirst().orElse(new DataPoint(LocalDateTime.now(), avg));
+                            result.add(avgData);
+
+                            missingMeasureCounter = 0;
+                        } else {
+                            if(missingMeasureCounter == 1) {
+                                // TODO: implement interpolation
+
+                            } else if(missingMeasureCounter == 2) {
+                                // TODO: svaki put kada vrati error ne treba da printa tabele ni s client ni s server side
+                                //result.clear();
+                                // result.add(new DataPoint(LocalDateTime.now(), -1));
+                                Logger.err("Two or more missing DataPoints in mean operation for requested interval");
+                                break;
+                            }
+                            missingMeasureCounter++;
+                        }
+                    }
+                    break;
+
+                case MEDIAN:
+                    // TODO: fix median java.lang.ArrayIndexOutOfBoundsException in every case
+                    double median = 0;
+                    int sum = 0;
+                    missingMeasureCounter = 0;
+
+                    for(LocalDateTime start = parameters.getFrom();
+                        start.compareTo(parameters.getTo()) < 0;
+                        start = start.plusSeconds(parameters.getInterval())
+                    ) {
+                        if(start.plusSeconds(parameters.getInterval()).compareTo(parameters.getTo()) > 0) {
+                            break;
+                        }
+
+                        final LocalDateTime currentStartTime = start;
+
+                        TreeSet<DataPoint> dataPointsInInterval =  dataPoints.stream()
+                                .filter((dataPoint) -> currentStartTime.compareTo(dataPoint.getTime()) <= 0 &&
+                                        currentStartTime.plusSeconds(parameters.getInterval()).compareTo(dataPoint.getTime()) > 0)
+                                .collect(Collectors.toCollection(TreeSet::new));
+
+                        if(!dataPointsInInterval.isEmpty()) {
+                            double[] medianList = dataPointsInInterval.stream()
+                                    .mapToDouble(DataPoint::getValue)
+                                    .sorted()
+                                    .toArray();
+                            for(double element: medianList) {
+                                sum++;
+                            }
+                            // FIXME: also weird stuff happening with a few first lines of csv file
+                            if(sum == 1) {
+                                median = medianList[0];
+                            } else if(sum == 2) {
+                                median = (medianList[0] + medianList[1]) / 2;
+                            } else if(sum > 2) {
+                                if(sum % 2 == 0) {
+                                    int idx1 = sum / 2;
+                                    int idx2 = sum / 2 - 1;
+                                    median = (medianList[idx1] + medianList[idx2]) / 2;;
+                                } else {
+                                    int idx = sum / 2;
+                                    median = medianList[idx];
+                                }
+                            }
+
+                            double finalMedian = median;
+                            DataPoint medData = dataPoints.stream()
+                                    .filter(dataPoint -> dataPoint.getValue() == finalMedian)
+                                    .findFirst().orElse(new DataPoint(LocalDateTime.now(), median));
+                            result.add(medData);
+
+                            missingMeasureCounter = 0;
+                        } else {
+                            if(missingMeasureCounter == 1) {
+                                // TODO: implement interpolation
+
+                            } else if(missingMeasureCounter == 2) {
+                                // TODO: svaki put kada vrati error ne treba da printa tabele ni s client ni s server side
+                                //result.clear();
+                                // result.add(new DataPoint(LocalDateTime.now(), -1));
+                                Logger.err("Two or more missing DataPoints in median operation for requested interval");
+                                break;
+                            }
+                            missingMeasureCounter++;
+                        }
+                    }
+                    break;
+            }
         }
 
         DataSeries series = new DataSeries(sensor, (int) parameters.getInterval(), parameters.getOperation());
         series.addAll(result);
+
         return series;
     }
 

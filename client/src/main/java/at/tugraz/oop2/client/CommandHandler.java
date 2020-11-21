@@ -119,15 +119,20 @@ public final class CommandHandler {
         Logger.clientRequestData(dataQueryParameters);
         final DataSeries series = conn.queryData(dataQueryParameters).get();
         Logger.clientResponseData(dataQueryParameters, series);
-        System.out.println("| ----------------------------------------------|");
-        System.out.println("|      Timestamp        |         Value         |");
-        System.out.println("| ----------------------------------------------|");
 
-        series.forEach((DataPoint datapoint) -> {
-            String line = String.format("|  %20s |  %20s | ", datapoint.getTime().toString(), String.valueOf( datapoint.getValue()));
-            System.out.println(line);
-        });
-        System.out.println("| ----------------------------------------------|");
+      //  if(series.first().getValue() != -1) {
+            System.out.println("| ----------------------------------------------|");
+            System.out.println("|      Timestamp        |         Value         |");
+            System.out.println("| ----------------------------------------------|");
+
+            series.forEach((DataPoint datapoint) -> {
+                String line = String.format("|  %20s |  %20s | ", datapoint.getTime().toString(), String.valueOf(datapoint.getValue()));
+                System.out.println(line);
+            });
+            System.out.println("| ----------------------------------------------|");
+     //   } else {
+      //      System.out.println("ERROR!");
+       // }
         //TODO print Sensors (not just use the Logger::clientResponseData) -> DONE
     }
 
