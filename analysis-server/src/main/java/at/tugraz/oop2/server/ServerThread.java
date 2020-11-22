@@ -13,7 +13,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-// TODO: scatterplot, linechart, caching, printovi za sve infos i errore bez logger
+// TODO: scatterplot, linechart, caching
 
 public class ServerThread extends Thread {
     Socket socket;
@@ -96,7 +96,7 @@ public class ServerThread extends Thread {
                 System.err.println("Disconnected!");
             } catch (ClassNotFoundException e) {
                 Logger.info("No definition for class with specified name found -> you got ClassNotFoundException");
-                System.err.println("Class definition missing!");// TODO: print some more reasonable things, never call this
+                System.err.println("Class definition missing!");
             }
     }
 
@@ -197,7 +197,11 @@ public class ServerThread extends Thread {
                             missingMeasureCounter = 0;
                         } else {
                             hadInterpolation = true;
-                            interpolationPoint = interpolationResultTracking.get(interpolationIdx - 1);
+                            if(interpolationIdx == 0) {
+                                interpolationPoint = 0d;
+                            } else {
+                                interpolationPoint = interpolationResultTracking.get(interpolationIdx - 1);
+                            }
 
                             if(missingMeasureCounter == 2) {
                                 result.clear();
@@ -285,7 +289,11 @@ public class ServerThread extends Thread {
                             missingMeasureCounter = 0;
                         } else {
                             hadInterpolation = true;
-                            interpolationPoint = interpolationResultTracking.get(interpolationIdx - 1);
+                            if(interpolationIdx == 0) {
+                                interpolationPoint = 0d;
+                            } else {
+                                interpolationPoint = interpolationResultTracking.get(interpolationIdx - 1);
+                            }
 
                             if(missingMeasureCounter == 2) {
                                 result.clear();
@@ -373,7 +381,11 @@ public class ServerThread extends Thread {
                             missingMeasureCounter = 0;
                         } else {
                             hadInterpolation = true;
-                            interpolationPoint = interpolationResultTracking.get(interpolationIdx - 1);
+                            if(interpolationIdx == 0) {
+                                interpolationPoint = 0d;
+                            } else {
+                                interpolationPoint = interpolationResultTracking.get(interpolationIdx - 1);
+                            }
 
                             if(missingMeasureCounter == 2) {
                                 result.clear();
@@ -501,7 +513,11 @@ public class ServerThread extends Thread {
                             missingMeasureCounter = 0;
                         } else {
                             hadInterpolation = true;
-                            interpolationPoint = interpolationResultTracking.get(interpolationIdx - 1);
+                            if(interpolationIdx == 0) {
+                                interpolationPoint = 0d;
+                            } else {
+                                interpolationPoint = interpolationResultTracking.get(interpolationIdx - 1);
+                            }
 
                             if(missingMeasureCounter == 2) {
                                 result.clear();

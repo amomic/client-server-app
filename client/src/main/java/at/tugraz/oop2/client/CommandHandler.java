@@ -144,19 +144,22 @@ public final class CommandHandler {
 
     private void queryLineChart(String... args) throws Exception {
         //TODO input parsing similar to above
-        validateArgc(args, 4, 5);
+        validateArgc(args, 4, 6);
         final int sensorId = Integer.parseUnsignedInt(args[0]);
         final String type = args[1];
         final LocalDateTime from = Util.stringToLocalDateTime(args[2]);
         final LocalDateTime to = Util.stringToLocalDateTime(args[3]);
-        final DataSeries.Operation operation = args.length < 6 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[4].toUpperCase());
+        final DataSeries.Operation operation = args.length < 5 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[4].toUpperCase());
         final long interval = args.length < 6 ? from.until(to, ChronoUnit.SECONDS) : Util.stringToInterval(args[5]);
 
 
        // operation = DataSeries.Operation.MAX;
-        final DataQueryParameters dataQueryParameters = new DataQueryParameters(sensorId, type, from, to, operation, interval);
-        Logger.clientRequestData(dataQueryParameters);
-        final DataSeries dataSeries = conn.queryData(dataQueryParameters).get();
+        // operation = DataSeries.Operation.MAX;
+        final DataQueryParameters lineChartQueryParameters= new DataQueryParameters(sensorId, type, from, to, operation, interval);
+        System.out.print(lineChartQueryParameters);
+
+        Logger.clientRequestData(lineChartQueryParameters);
+        final DataSeries dataSeries = conn.queryLineChart(lineChartQueryParameters).get();
 
         if(dataSeries.size() == 0) {
             Logger.err("No response from the server.");
