@@ -115,16 +115,6 @@ public final class ClientConnection implements AutoCloseable {
         return pictureCompletableFuture;
     }
 
-    public CompletableFuture<Picture> queryScatterPlot(ScatterPlotQueryParameters scatterPlotQueryParameters) throws IOException, ClassNotFoundException {
-        CompletableFuture<Picture> pictureCompletableFuture = new CompletableFuture<>();
-        outputStream.writeObject(scatterPlotQueryParameters);
-
-        Picture picture = (Picture) inputStream.readObject();
-        outputStream.reset();
-        pictureCompletableFuture.complete(picture);
-        return pictureCompletableFuture;
-    }
-
 
 
 

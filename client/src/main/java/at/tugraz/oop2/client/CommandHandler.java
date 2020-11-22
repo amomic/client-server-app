@@ -250,7 +250,7 @@ public final class CommandHandler {
         Logger.clientRequestData(scatterPlotQueryParameters);
         System.out.println("Client request is sent!");
 
-        final Picture picture = conn.queryScatterPlot(scatterPlotQueryParameters).get();
+        /*final Picture picture = conn.queryScatterPlot().get();
 
         if(picture == null) {
             Logger.err("No response from the server.");
@@ -262,7 +262,7 @@ public final class CommandHandler {
             System.out.println("| ----------------------------------------------|");
 
         }
-        //png can be created using the Picture class
+        //png can be created using the Picture class*/
     }
 
     private void displayHelp(String... args) {
