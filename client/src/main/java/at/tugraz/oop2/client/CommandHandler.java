@@ -53,6 +53,7 @@ public final class CommandHandler {
             return;
         }
         try {
+            Logger.info("Client command entered!");
             cmd.handle(Arrays.copyOfRange(args, 1, args.length));
         } catch (final CommandException | NumberFormatException ex) {
             System.out.println("Error: " + ex.getMessage());
@@ -87,10 +88,11 @@ public final class CommandHandler {
     private void listSensors(String... args) throws Exception {
         validateArgc(args, 0);
         Logger.clientRequestLS();
+        System.out.println("Client request is sent!");
         //TODO print Sensors (not just use the Logger::clientResponseLS) -> DONE
         final List<Sensor> sensors = conn.querySensors().get();
         Logger.clientResponseLS(sensors);
-
+        System.out.println("Client response:");
         System.out.println("| ----------------------------------------------------------------------------------------------------------------------------------------------|");
         System.out.println("|           Id          |          Type         |      Location        |         Lat            |          Lon       |         Metric           |");
         System.out.println("| ----------------------------------------------------------------------------------------------------------------------------------------------|");
@@ -119,12 +121,14 @@ public final class CommandHandler {
 
         final DataQueryParameters dataQueryParameters = new DataQueryParameters(sensorId, type, from, to, operation, interval);
         Logger.clientRequestData(dataQueryParameters);
+        System.out.println("Client request is sent!");
         final DataSeries series = conn.queryData(dataQueryParameters).get();
 
         if(series.size() == 0) {
             Logger.err("No response from the server.");
         } else {
             Logger.clientResponseData(dataQueryParameters, series);
+            System.out.println("Client response:");
             System.out.println("| ----------------------------------------------|");
             System.out.println("|      Timestamp        |         Value         |");
             System.out.println("| ----------------------------------------------|");
@@ -145,8 +149,7 @@ public final class CommandHandler {
         final String type = args[1];
         final LocalDateTime from = Util.stringToLocalDateTime(args[2]);
         final LocalDateTime to = Util.stringToLocalDateTime(args[3]);
-        //TODO why doesn't operation work, add argument for path
-        DataSeries.Operation operation = args.length < 6 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[4].toUpperCase());
+        final DataSeries.Operation operation = args.length < 6 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[4].toUpperCase());
         final long interval = args.length < 6 ? from.until(to, ChronoUnit.SECONDS) : Util.stringToInterval(args[5]);
 
 
@@ -243,7 +246,10 @@ public final class CommandHandler {
 
         final ScatterPlotQueryParameters scatterPlotQueryParameters = new ScatterPlotQueryParameters(sensorId1,
                 type1, from, to, operation, interval, sensorId2, type2);
+
         Logger.clientRequestData(scatterPlotQueryParameters);
+        System.out.println("Client request is sent!");
+
         final Picture picture = conn.queryScatterPlot(scatterPlotQueryParameters).get();
 
         if(picture == null) {
