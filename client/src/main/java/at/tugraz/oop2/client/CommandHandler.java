@@ -4,9 +4,12 @@ import at.tugraz.oop2.Logger;
 import at.tugraz.oop2.Util;
 import at.tugraz.oop2.data.*;
 
+import java.awt.*;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.List;
 
 /**
  * Used for handling and parsing commands. There is little to no work to do for you here, since
@@ -50,7 +53,6 @@ public final class CommandHandler {
             return;
         }
         try {
-            System.out.println("HANDLING STH");
             cmd.handle(Arrays.copyOfRange(args, 1, args.length));
         } catch (final CommandException | NumberFormatException ex) {
             System.out.println("Error: " + ex.getMessage());
@@ -138,33 +140,122 @@ public final class CommandHandler {
 
     private void queryLineChart(String... args) throws Exception {
         //TODO input parsing similar to above
-        validateArgc(args, 4, 6);
+        validateArgc(args, 4, 5);
         final int sensorId = Integer.parseUnsignedInt(args[0]);
         final String type = args[1];
         final LocalDateTime from = Util.stringToLocalDateTime(args[2]);
         final LocalDateTime to = Util.stringToLocalDateTime(args[3]);
-        final DataSeries.Operation operation = args.length < 5 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[4].toUpperCase());
+        //TODO why doesn't operation work, add argument for path
+        DataSeries.Operation operation = args.length < 6 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[4].toUpperCase());
         final long interval = args.length < 6 ? from.until(to, ChronoUnit.SECONDS) : Util.stringToInterval(args[5]);
 
-        final LineChartQueryParameters lineChartQueryParameters = new LineChartQueryParameters(sensorId, type, from, to, operation, interval);
-        Logger.clientRequestData(lineChartQueryParameters);
-        final Picture picture = conn.queryLineChart(lineChartQueryParameters).get();
 
-        if(picture == null) {
+       // operation = DataSeries.Operation.MAX;
+        final DataQueryParameters dataQueryParameters = new DataQueryParameters(sensorId, type, from, to, operation, interval);
+        Logger.clientRequestData(dataQueryParameters);
+        final DataSeries dataSeries = conn.queryData(dataQueryParameters).get();
+
+        if(dataSeries.size() == 0) {
             Logger.err("No response from the server.");
         } else {
-            //Logger.clientCreateLinechartImage("ime.png", series);
-            picture.save("ime.png");
+
+            //TODO logger min, max where to get the values and mean??
+
+            DataPoint min = dataSeries.first();
+            DataPoint max = dataSeries.first();
+
+            for (DataPoint d:dataSeries){
+                if ( d.getValue() < min.getValue() )
+                    min = d;
+                if ( d.getValue() > max.getValue() )
+                    max = d;
+
+            }
+
+            Picture lineChart = createLineChart(dataSeries, from, to, interval, min, max);
+            lineChart.save("linechart.png");
+
+
+            //TODO CALCULATE MEAN
+            Logger.clientCreateLinechartImage("linechart.png", dataSeries, min, max, new DataPoint(null, 0) );
             System.out.println("| ----------------------------------------------|");
-            System.out.println("| END LINE PLOT |");
+            System.out.println("| END LINECHART |");
             System.out.println("| ----------------------------------------------|");
 
         }
         //png can be created using the Picture class
     }
 
+    private Picture createLineChart(DataSeries dataSeries, LocalDateTime from, LocalDateTime to, long interval, DataPoint min, DataPoint max) {
+        int width = 1024;
+        int height = 720;
+
+
+        Picture lineChart = new Picture(width, height);
+        Graphics2D graphics = lineChart.getGraphics2D();
+        graphics.setBackground(Color.getColor("white"));
+
+        // Y-Axis
+        int x_offset = (int)(width*0.05);
+        int y_offset = (int)(height*0.95);
+        graphics.drawLine( x_offset ,(int)(height*0.05),x_offset, y_offset);
+        // X-Axis
+        graphics.drawLine( x_offset,y_offset,(int)(width*0.95),y_offset);
+
+        double from_epoch = from.toEpochSecond(ZoneOffset.UTC);
+        double to_epoch = to.toEpochSecond(ZoneOffset.UTC);
+
+
+        //TODO CHECK timezone
+        double normalized_val_tmp = normalize( dataSeries.first().getValue(), min.getValue(), max.getValue() );
+        double normalized_time_tmp = normalize( dataSeries.first().getTime().toEpochSecond(ZoneOffset.UTC), from_epoch, to_epoch);
+        for (DataPoint d: dataSeries){
+            double normalized_val = normalize( d.getValue(), min.getValue(), max.getValue() );
+            double normalized_time = normalize( d.getTime().toEpochSecond(ZoneOffset.UTC), from_epoch, to_epoch);
+
+            graphics.drawLine( (int)(width*normalized_time),(int)(height*normalized_val),(int)(width*normalized_time_tmp),
+                    (int)(height*normalized_val_tmp));
+
+            normalized_val_tmp = normalized_val;
+            normalized_time_tmp = normalized_time;
+        }
+
+        return lineChart;
+    }
+
+    double normalize(double value, double min, double max) {
+        double first_normal = 1 - ((value - min) / (max - min));
+        return first_normal * 0.90;
+    }
+
+
     private void queryScatterplot(String... args) throws Exception {
         //TODO input parsing similar to above
+        validateArgc(args, 6, 8);
+        final int sensorId1 = Integer.parseUnsignedInt(args[0]);
+        final int sensorId2 = Integer.parseUnsignedInt(args[2]);
+        final String type1 = args[1];
+        final String type2 = args[3];
+        final LocalDateTime from = Util.stringToLocalDateTime(args[4]);
+        final LocalDateTime to = Util.stringToLocalDateTime(args[5]);
+        final DataSeries.Operation operation = args.length < 8 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[6].toUpperCase());
+        final long interval = args.length < 8 ? from.until(to, ChronoUnit.SECONDS) : Util.stringToInterval(args[7]);
+
+        final ScatterPlotQueryParameters scatterPlotQueryParameters = new ScatterPlotQueryParameters(sensorId1,
+                type1, from, to, operation, interval, sensorId2, type2);
+        Logger.clientRequestData(scatterPlotQueryParameters);
+        final Picture picture = conn.queryScatterPlot(scatterPlotQueryParameters).get();
+
+        if(picture == null) {
+            Logger.err("No response from the server.");
+        } else {
+            //Logger.clientCreateLinechartImage("ime.png", series);
+            picture.save("scatterplot.png");
+            System.out.println("| ----------------------------------------------|");
+            System.out.println("| END SCATTERPLOT |");
+            System.out.println("| ----------------------------------------------|");
+
+        }
         //png can be created using the Picture class
     }
 

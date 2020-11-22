@@ -63,14 +63,6 @@ public class ServerThread extends Thread {
                             System.out.println(line);
                         });
 
-                    } else if (msg instanceof LineChartQueryParameters) {
-                    LineChartQueryParameters parameters = (LineChartQueryParameters) msg;
-                    Logger.serverRequestData(parameters);
-                    DataSeries dataSeries = queryData(parameters);
-
-                    System.out.println("LINE CHART");
-                    outputStream.writeObject(dataSeries);
-                    outputStream.reset();
                     } else if (msg instanceof DataQueryParameters) {
                         DataQueryParameters parameters = (DataQueryParameters) msg;
                         Logger.serverRequestData(parameters);
@@ -630,7 +622,6 @@ public class ServerThread extends Thread {
             }
         }
     }
-
 
 
 

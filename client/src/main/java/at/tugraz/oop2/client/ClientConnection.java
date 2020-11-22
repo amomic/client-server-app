@@ -95,15 +95,26 @@ public final class ClientConnection implements AutoCloseable {
         return seriesCompletableFuture;
     }
 
-    public CompletableFuture<Picture> queryLineChart(LineChartQueryParameters lineChartQueryParameters) throws IOException, ClassNotFoundException {
-        CompletableFuture<Picture> pictureCompletableFuture = new CompletableFuture<>();
+    public CompletableFuture<DataSeries> queryLineChart(DataQueryParameters lineChartQueryParameters) throws IOException, ClassNotFoundException {
+        CompletableFuture<DataSeries> dataSeriesCompletableFuture = new CompletableFuture<>();
         outputStream.writeObject(lineChartQueryParameters);
+
+        DataSeries dataSeries = (DataSeries) inputStream.readObject();
+        outputStream.reset();
+        dataSeriesCompletableFuture.complete(dataSeries);
+        return dataSeriesCompletableFuture;
+    }
+
+    public CompletableFuture<Picture> queryScatterPlot(ScatterPlotQueryParameters scatterPlotQueryParameters) throws IOException, ClassNotFoundException {
+        CompletableFuture<Picture> pictureCompletableFuture = new CompletableFuture<>();
+        outputStream.writeObject(scatterPlotQueryParameters);
 
         Picture picture = (Picture) inputStream.readObject();
         outputStream.reset();
         pictureCompletableFuture.complete(picture);
         return pictureCompletableFuture;
     }
+
 
 
     @FunctionalInterface
