@@ -156,7 +156,7 @@ public final class CommandHandler {
 
 
        // operation = DataSeries.Operation.MAX;
-        final DataQueryParameters lineChartQueryParameters= new LineChartQueryParameters(sensorId, type, from, to, operation, path, interval);
+        final DataQueryParameters lineChartQueryParameters= new LineChartQueryParameters(sensorId, type, from, to, path, operation, interval);
         Logger.clientRequestData(lineChartQueryParameters);
         final DataSeries dataSeries = conn.queryLineChart(lineChartQueryParameters).get();
 
