@@ -5,6 +5,7 @@ import at.tugraz.oop2.Util;
 import at.tugraz.oop2.data.*;
 
 import java.awt.*;
+import java.io.ObjectInputStream;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -144,20 +145,18 @@ public final class CommandHandler {
 
     private void queryLineChart(String... args) throws Exception {
         //TODO input parsing similar to above
-        validateArgc(args, 4, 6);
+        validateArgc(args, 4, 7);
         final int sensorId = Integer.parseUnsignedInt(args[0]);
         final String type = args[1];
         final LocalDateTime from = Util.stringToLocalDateTime(args[2]);
         final LocalDateTime to = Util.stringToLocalDateTime(args[3]);
-        final DataSeries.Operation operation = args.length < 5 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[4].toUpperCase());
-        final long interval = args.length < 6 ? from.until(to, ChronoUnit.SECONDS) : Util.stringToInterval(args[5]);
+        String path = args[4];
+        final DataSeries.Operation operation = args.length < 6 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[5].toUpperCase());
+        final long interval = args.length < 7 ? from.until(to, ChronoUnit.SECONDS) : Util.stringToInterval(args[6]);
 
 
        // operation = DataSeries.Operation.MAX;
-        // operation = DataSeries.Operation.MAX;
-        final DataQueryParameters lineChartQueryParameters= new DataQueryParameters(sensorId, type, from, to, operation, interval);
-        System.out.print(lineChartQueryParameters);
-
+        final DataQueryParameters lineChartQueryParameters= new LineChartQueryParameters(sensorId, type, from, to, operation, path, interval);
         Logger.clientRequestData(lineChartQueryParameters);
         final DataSeries dataSeries = conn.queryLineChart(lineChartQueryParameters).get();
 
@@ -179,11 +178,11 @@ public final class CommandHandler {
             }
 
             Picture lineChart = createLineChart(dataSeries, from, to, interval, min, max);
-            lineChart.save("linechart.png");
+            lineChart.save(path);
 
 
             //TODO CALCULATE MEAN
-            Logger.clientCreateLinechartImage("linechart.png", dataSeries, min, max, new DataPoint(null, 0) );
+            Logger.clientCreateLinechartImage(path, dataSeries, min, max, new DataPoint(null, 0) );
             System.out.println("| ----------------------------------------------|");
             System.out.println("| END LINECHART |");
             System.out.println("| ----------------------------------------------|");
