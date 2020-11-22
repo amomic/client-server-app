@@ -177,12 +177,20 @@ public final class CommandHandler {
 
             }
 
+
+            double mean_val = dataSeries.stream().mapToDouble(DataPoint::getValue).average().orElse(0);
+            long time_val = (from.toEpochSecond(ZoneOffset.UTC) + to.toEpochSecond(ZoneOffset.UTC)) / 2;
+            LocalDateTime mean_time = LocalDateTime.ofEpochSecond(time_val,0,ZoneOffset.UTC);
+
+
+            DataPoint mean = new DataPoint(mean_time,mean_val);
+
             Picture lineChart = createLineChart(dataSeries, from, to, interval, min, max);
             lineChart.save(path);
 
 
             //TODO CALCULATE MEAN
-            Logger.clientCreateLinechartImage(path, dataSeries, min, max, new DataPoint(null, 0) );
+            Logger.clientCreateLinechartImage(path, dataSeries, min, max, mean );
             System.out.println("| ----------------------------------------------|");
             System.out.println("| END LINECHART |");
             System.out.println("| ----------------------------------------------|");
