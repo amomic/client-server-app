@@ -3,6 +3,7 @@ package at.tugraz.oop2.client;
 import at.tugraz.oop2.Logger;
 import at.tugraz.oop2.Util;
 import at.tugraz.oop2.data.*;
+import lombok.Data;
 
 import java.awt.*;
 import java.time.LocalDateTime;
@@ -175,9 +176,19 @@ public final class CommandHandler {
 
             }
 
+            double time_val = 0.00;
+            float time_val_end = 0;
+
+            for(DataPoint d : dataSeries)
+            {
+
+                time_val += (double) d.getTime().toEpochSecond(ZoneOffset.UTC);
+
+            }
+            time_val_end =(float)time_val / dataSeries.size();
+
             double mean_val = dataSeries.stream().mapToDouble(DataPoint::getValue).average().orElse(0);
-            long time_val = (from.toEpochSecond(ZoneOffset.UTC) + to.toEpochSecond(ZoneOffset.UTC)) / 2;
-            LocalDateTime mean_time = LocalDateTime.ofEpochSecond(time_val,0,ZoneOffset.UTC);
+            LocalDateTime mean_time = LocalDateTime.ofEpochSecond((long)time_val_end,0,ZoneOffset.UTC);
 
             DataPoint mean = new DataPoint(mean_time,mean_val);
 
@@ -201,13 +212,12 @@ public final class CommandHandler {
     }
 
     private Picture createLineChart(DataSeries dataSeries, LocalDateTime from, LocalDateTime to, long interval, DataPoint min, DataPoint max) {
-        int width = 1024;
-        int height = 720;
+        int width = 1100;
+        int height = 900;
 
 
         Picture lineChart = new Picture(width, height);
         Graphics2D graphics = lineChart.getGraphics2D();
-        graphics.setBackground(Color.getColor("white"));
 
         // Y-Axis
         int x_offset = (int)(width*0.05);
@@ -218,6 +228,14 @@ public final class CommandHandler {
 
         double from_epoch = from.toEpochSecond(ZoneOffset.UTC);
         double to_epoch = to.toEpochSecond(ZoneOffset.UTC);
+
+        //time
+        graphics.drawString(String.valueOf(from),(int)(width*0.06),(int)(height*0.97));
+        graphics.drawString(String.valueOf(to),(int)(width*0.85),(int)(height*0.97));
+        //value
+        graphics.drawString((String.valueOf(min.getValue())),(int)(width*0.01),(int)(height*0.94));
+        graphics.drawString((String.valueOf(max.getValue())),(int)(width*0.02),(int)(height*0.04));
+
 
         double normalized_val_tmp = normalize(dataSeries.first().getValue(), min.getValue(), max.getValue() );
         double normalized_time_tmp = normalize(dataSeries.first().getTime().toEpochSecond(ZoneOffset.UTC), from_epoch, to_epoch);
