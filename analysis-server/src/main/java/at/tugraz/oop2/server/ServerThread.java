@@ -66,7 +66,10 @@ public class ServerThread extends Thread {
                         Logger.serverRequestData(parameters);
                         System.out.println("Server request is sent!");
 
+
                         DataSeries dataSeries = queryData(parameters);
+
+
                         outputStream.writeObject(dataSeries);
                         outputStream.reset();
 
@@ -97,7 +100,7 @@ public class ServerThread extends Thread {
             }
     }
 
-    private DataSeries queryData(DataQueryParameters parameters) throws IOException {
+    public DataSeries queryData(DataQueryParameters parameters) throws IOException {
         File file = new File(path + "/sensors");
 
         // this will be overwritten by getData() so we use random values to avouid null warning
