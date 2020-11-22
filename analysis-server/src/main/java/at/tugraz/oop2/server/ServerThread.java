@@ -66,9 +66,9 @@ public class ServerThread extends Thread {
                         System.out.println("Server request is sent!");
 
 
-                       // DataSeries dataSeries = queryData(parameters);
-                        CacheDataQueryParameters cacheDqp = new CacheDataQueryParameters(parameters);
-                        DataSeries dataSeries = AnalysisServer.cache.getCachedData(cacheDqp);
+                        DataSeries dataSeries = queryData(parameters);
+                       // CacheDataQueryParameters cacheDqp = new CacheDataQueryParameters(parameters);
+                       // DataSeries dataSeries = AnalysisServer.cache.getCachedData(cacheDqp);
 
 
                         outputStream.writeObject(dataSeries);
@@ -102,7 +102,7 @@ public class ServerThread extends Thread {
             }
     }
 
-    public DataSeries queryData(DataQueryParameters parameters) throws IOException {
+    private DataSeries queryData(DataQueryParameters parameters) throws IOException {
         File file = new File(path + "/sensors");
 
         // this will be overwritten by getData() so we use random values to avouid null warning
