@@ -13,8 +13,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-// TODO: scatterplot, linechart, caching
-
 public class ServerThread extends Thread {
     Socket socket;
     String path;
@@ -88,6 +86,7 @@ public class ServerThread extends Thread {
                             System.out.println("| ----------------------------------------------|");
                         } else {
                             Logger.err("Two or more missing DataPoints existing after performing operation for requested interval");
+                            System.out.println("Two or more missing DataPoints existing after performing operation for requested interval");
                         }
                     }
                 }
@@ -111,7 +110,6 @@ public class ServerThread extends Thread {
 
         getData(file, parameters, sensor, dataPoints);
 
-        // TODO data command: interpolation -> CHECK IF IT IS OK for different intervals and timestamps
         if(parameters.getOperation() == null) {
             result.addAll(dataPoints);
         } else {
@@ -661,7 +659,4 @@ public class ServerThread extends Thread {
             }
         }
     }
-
-
-
 }

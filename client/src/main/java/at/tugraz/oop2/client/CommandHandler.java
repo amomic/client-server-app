@@ -5,12 +5,11 @@ import at.tugraz.oop2.Util;
 import at.tugraz.oop2.data.*;
 
 import java.awt.*;
-import java.io.ObjectInputStream;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 
 /**
  * Used for handling and parsing commands. There is little to no work to do for you here, since
@@ -90,8 +89,9 @@ public final class CommandHandler {
         validateArgc(args, 0);
         Logger.clientRequestLS();
         System.out.println("Client request is sent!");
-        //TODO print Sensors (not just use the Logger::clientResponseLS) -> DONE
+
         final List<Sensor> sensors = conn.querySensors().get();
+
         Logger.clientResponseLS(sensors);
         System.out.println("Client response:");
         System.out.println("| ----------------------------------------------------------------------------------------------------------------------------------------------|");
@@ -99,7 +99,6 @@ public final class CommandHandler {
         System.out.println("| ----------------------------------------------------------------------------------------------------------------------------------------------|");
 
         sensors.forEach(sensor -> {
-            //sensor_id;sensor_type;location;lat;lon;timestamp;P1;durP1;ratioP1;P2;durP2;ratioP2
             String line = String.format("|  %20s |  %20s |  %20s |  %20s |  %20s |  %20s |", String.valueOf(sensor.getId()),
                     sensor.getType(), sensor.getLocation(), String.valueOf(sensor.getLatitude()),
                     String.valueOf(sensor.getLongitude()), sensor.getMetric());
@@ -123,10 +122,12 @@ public final class CommandHandler {
         final DataQueryParameters dataQueryParameters = new DataQueryParameters(sensorId, type, from, to, operation, interval);
         Logger.clientRequestData(dataQueryParameters);
         System.out.println("Client request is sent!");
+
         final DataSeries series = conn.queryData(dataQueryParameters).get();
 
         if(series.size() == 0) {
-            Logger.err("No response from the server.");
+            Logger.err("Two or more missing data points. No response from the server.");
+            System.out.println("Two or more missing data points. No response from the server.");
         } else {
             Logger.clientResponseData(dataQueryParameters, series);
             System.out.println("Client response:");
@@ -140,11 +141,9 @@ public final class CommandHandler {
             });
             System.out.println("| ----------------------------------------------|");
         }
-        //TODO print Sensors (not just use the Logger::clientResponseData) -> DONE
     }
 
     private void queryLineChart(String... args) throws Exception {
-        //TODO input parsing similar to above
         validateArgc(args, 4, 7);
         final int sensorId = Integer.parseUnsignedInt(args[0]);
         final String type = args[1];
@@ -154,22 +153,21 @@ public final class CommandHandler {
         final DataSeries.Operation operation = args.length < 6 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[5].toUpperCase());
         final long interval = args.length < 7 ? from.until(to, ChronoUnit.SECONDS) : Util.stringToInterval(args[6]);
 
-
-       // operation = DataSeries.Operation.MAX;
         final DataQueryParameters lineChartQueryParameters= new LineChartQueryParameters(sensorId, type, from, to, path, operation, interval);
+
         Logger.clientRequestData(lineChartQueryParameters);
+        System.out.println("Client request is sent!");
+
         final DataSeries dataSeries = conn.queryLineChart(lineChartQueryParameters).get();
 
         if(dataSeries.size() == 0) {
-            Logger.err("No response from the server.");
+            Logger.err("Two or more missing data points. No response from the server.");
+            System.out.println("Two or more missing data points. No response from the server.");
         } else {
-
-            //TODO logger min, max where to get the values and mean??
-
             DataPoint min = dataSeries.first();
             DataPoint max = dataSeries.first();
 
-            for (DataPoint d:dataSeries){
+            for (DataPoint d:dataSeries) {
                 if ( d.getValue() < min.getValue() )
                     min = d;
                 if ( d.getValue() > max.getValue() )
@@ -177,26 +175,29 @@ public final class CommandHandler {
 
             }
 
-
             double mean_val = dataSeries.stream().mapToDouble(DataPoint::getValue).average().orElse(0);
             long time_val = (from.toEpochSecond(ZoneOffset.UTC) + to.toEpochSecond(ZoneOffset.UTC)) / 2;
             LocalDateTime mean_time = LocalDateTime.ofEpochSecond(time_val,0,ZoneOffset.UTC);
-
 
             DataPoint mean = new DataPoint(mean_time,mean_val);
 
             Picture lineChart = createLineChart(dataSeries, from, to, interval, min, max);
             lineChart.save(path);
 
+            Logger.clientCreateLinechartImage(path, dataSeries, min, max, mean);
 
-            //TODO CALCULATE MEAN
-            Logger.clientCreateLinechartImage(path, dataSeries, min, max, mean );
-            System.out.println("| ----------------------------------------------|");
-            System.out.println("| END LINECHART |");
-            System.out.println("| ----------------------------------------------|");
+            System.out.println("Client action: linechart. Data points displayed:");
+            System.out.println("| -------------------------------------------------------|");
+            System.out.println("|           Time             |               Value       |");
+            System.out.print("|");
+            printDataPoint(min);
+            System.out.print("|");
+            printDataPoint(max);
+            System.out.print("|");
+            printDataPoint(mean);
+            System.out.println("| -------------------------------------------------------|");
 
         }
-        //png can be created using the Picture class
     }
 
     private Picture createLineChart(DataSeries dataSeries, LocalDateTime from, LocalDateTime to, long interval, DataPoint min, DataPoint max) {
@@ -211,18 +212,16 @@ public final class CommandHandler {
         // Y-Axis
         int x_offset = (int)(width*0.05);
         int y_offset = (int)(height*0.95);
-        graphics.drawLine( x_offset ,(int)(height*0.05),x_offset, y_offset);
+        graphics.drawLine(x_offset ,(int)(height*0.05),x_offset, y_offset);
         // X-Axis
-        graphics.drawLine( x_offset,y_offset,(int)(width*0.95),y_offset);
+        graphics.drawLine(x_offset,y_offset,(int)(width*0.95),y_offset);
 
         double from_epoch = from.toEpochSecond(ZoneOffset.UTC);
         double to_epoch = to.toEpochSecond(ZoneOffset.UTC);
 
-
-        //TODO CHECK timezone
-        double normalized_val_tmp = normalize( dataSeries.first().getValue(), min.getValue(), max.getValue() );
-        double normalized_time_tmp = normalize( dataSeries.first().getTime().toEpochSecond(ZoneOffset.UTC), from_epoch, to_epoch);
-        for (DataPoint d: dataSeries){
+        double normalized_val_tmp = normalize(dataSeries.first().getValue(), min.getValue(), max.getValue() );
+        double normalized_time_tmp = normalize(dataSeries.first().getTime().toEpochSecond(ZoneOffset.UTC), from_epoch, to_epoch);
+        for (DataPoint d: dataSeries) {
             double normalized_val = normalize( d.getValue(), min.getValue(), max.getValue() );
             double normalized_time = normalize( d.getTime().toEpochSecond(ZoneOffset.UTC), from_epoch, to_epoch);
 
@@ -242,6 +241,7 @@ public final class CommandHandler {
     }
 
 
+    // TODO: scatterplot
     private void queryScatterplot(String... args) throws Exception {
         //TODO input parsing similar to above
         validateArgc(args, 6, 8);
@@ -259,20 +259,6 @@ public final class CommandHandler {
 
         Logger.clientRequestData(scatterPlotQueryParameters);
         System.out.println("Client request is sent!");
-
-        /*final Picture picture = conn.queryScatterPlot().get();
-
-        if(picture == null) {
-            Logger.err("No response from the server.");
-        } else {
-            //Logger.clientCreateLinechartImage("ime.png", series);
-            picture.save("scatterplot.png");
-            System.out.println("| ----------------------------------------------|");
-            System.out.println("| END SCATTERPLOT |");
-            System.out.println("| ----------------------------------------------|");
-
-        }
-        //png can be created using the Picture class*/
     }
 
     private void displayHelp(String... args) {

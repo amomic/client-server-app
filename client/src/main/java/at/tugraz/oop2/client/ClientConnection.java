@@ -73,7 +73,6 @@ public final class ClientConnection implements AutoCloseable {
         connectionOpenedEventHandlers.add(eventHandler);
     }
 
-    // TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     public CompletableFuture<List<Sensor>> querySensors() throws IOException, ClassNotFoundException {
         CompletableFuture<List<Sensor>> sensors = new CompletableFuture<>();
 
@@ -114,8 +113,6 @@ public final class ClientConnection implements AutoCloseable {
         pictureCompletableFuture.complete(picture);
         return pictureCompletableFuture;
     }
-
-
 
 
     @FunctionalInterface
