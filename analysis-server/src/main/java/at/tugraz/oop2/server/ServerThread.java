@@ -4,6 +4,7 @@ import at.tugraz.oop2.Logger;
 import at.tugraz.oop2.Util;
 import at.tugraz.oop2.data.*;
 
+import javax.xml.crypto.Data;
 import java.io.*;
 import java.net.Socket;
 import java.time.LocalDateTime;
@@ -65,7 +66,9 @@ public class ServerThread extends Thread {
                         System.out.println("Server request is sent!");
 
 
-                        DataSeries dataSeries = queryData(parameters);
+                       // DataSeries dataSeries = queryData(parameters);
+                        CacheDataQueryParameters cacheDqp = new CacheDataQueryParameters(parameters);
+                        DataSeries dataSeries = AnalysisServer.cache.getCachedData(cacheDqp);
 
 
                         outputStream.writeObject(dataSeries);

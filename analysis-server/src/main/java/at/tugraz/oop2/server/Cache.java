@@ -12,31 +12,26 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 
 public class Cache implements Serializable {
-    private final LoadingCache<CacheDataQueryParameters, DataSeries> cachedData;
-    private AnalysisServer analysisServer;
 
-    public Cache(AnalysisServer analysisServer) throws Exception {
-        this.analysisServer = analysisServer;
+    private final LoadingCache<CacheDataQueryParameters, DataSeries> cachedData;
+
+    public Cache(AnalysisServer analysisServer){
         this.cachedData = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.MINUTES).maximumSize(1000).build(new CacheLoader<>() {
             @Override
             public DataSeries load(CacheDataQueryParameters cacheDataQueryParameters) throws Exception {
                 Logger.info("Cache miss!");
-
-
-                DataSeries dataSeries =  analysisServer.serverThread.queryData(cacheDataQueryParameters.getDataObject());
+                DataSeries dataSeries = analysisServer.serverThread.queryData(cacheDataQueryParameters.getDataObject());
                 return dataSeries;
             }
         });
     }
 
-
-
-    public DataSeries getCachedData(CacheDataQueryParameters cacheObject) {
+    public DataSeries getCachedData(CacheDataQueryParameters ObjectCache) {
         try {
-            DataSeries dataSeries = this.cachedData.get(cacheObject);
+            DataSeries dataSeries = this.cachedData.get(ObjectCache);
             return dataSeries;
         } catch (ExecutionException e) {
-            Logger.err("Couldn't retrieve data from cache!");
+            Logger.err("Can't recover data from cache!");
         }
 
         return null;

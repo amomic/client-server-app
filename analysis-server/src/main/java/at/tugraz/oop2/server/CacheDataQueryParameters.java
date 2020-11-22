@@ -13,10 +13,11 @@ public class CacheDataQueryParameters {
 
     @Override
     public boolean equals(Object obj) {
+
         if(this == obj)
             return true;
 
-        if(obj == null || obj.getClass()!= this.getClass())
+        if(obj == null || obj.getClass() != this.getClass())
             return false;
 
         CacheDataQueryParameters requestDataObject = (CacheDataQueryParameters) obj;
