@@ -21,6 +21,7 @@ public final class CommandHandler {
 
     private final ClientConnection conn;
     private final Map<String, Command> commands = new HashMap<>();
+    private DataSeries dataSeries1;
 
     public CommandHandler(ClientConnection conn) {
         this.conn = conn;
@@ -255,29 +256,121 @@ public final class CommandHandler {
 
     double normalize(double value, double min, double max) {
         double first_normal = 1 - ((value - min) / (max - min));
-        return first_normal * 0.90;
+        return first_normal*90;
     }
 
 
     // TODO: scatterplot
     private void queryScatterplot(String... args) throws Exception {
         //TODO input parsing similar to above
-        validateArgc(args, 6, 8);
+        validateArgc(args, 7, 9);
         final int sensorId1 = Integer.parseUnsignedInt(args[0]);
         final int sensorId2 = Integer.parseUnsignedInt(args[2]);
         final String type1 = args[1];
         final String type2 = args[3];
         final LocalDateTime from = Util.stringToLocalDateTime(args[4]);
         final LocalDateTime to = Util.stringToLocalDateTime(args[5]);
-        final DataSeries.Operation operation = args.length < 8 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[6].toUpperCase());
-        final long interval = args.length < 8 ? from.until(to, ChronoUnit.SECONDS) : Util.stringToInterval(args[7]);
+        String path = args[6];
+        final DataSeries.Operation operation = args.length < 8 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[7].toUpperCase());
+        final long interval = args.length < 9 ? from.until(to, ChronoUnit.SECONDS) : Util.stringToInterval(args[8]);
 
-        final ScatterPlotQueryParameters scatterPlotQueryParameters = new ScatterPlotQueryParameters(sensorId1,
-                type1, from, to, operation, interval, sensorId2, type2);
+        final ScatterPlotQueryParameters scatterPlotQueryParameters1 = new ScatterPlotQueryParameters(sensorId1, type1,from, to, operation, interval);
 
-        Logger.clientRequestData(scatterPlotQueryParameters);
+        final ScatterPlotQueryParameters scatterPlotQueryParameters2 = new ScatterPlotQueryParameters(sensorId2, type2,from, to, operation, interval);
+
+        Logger.clientRequestData(scatterPlotQueryParameters1);
+        Logger.clientRequestData(scatterPlotQueryParameters2);
         System.out.println("Client request is sent!");
+
+        final DataSeries dataSeries1 = conn.queryLineChart(scatterPlotQueryParameters1).get();
+        final DataSeries dataSeries2 = conn.queryLineChart(scatterPlotQueryParameters2).get();
+
+        if(dataSeries1.size() == 0 || dataSeries2.size()==0) {
+            Logger.err("Two or more missing data points. No response from the server.");
+            System.out.println("Two or more missing data points. No response from the server.");
+        } else {
+            DataPoint min1 = dataSeries1.first();
+            DataPoint max1 = dataSeries1.first();
+
+            DataPoint min2 = dataSeries2.first();
+            DataPoint max2 = dataSeries2.first();
+
+            for (DataPoint d:dataSeries1) {
+                if ( d.getValue() < min1.getValue() )
+                    min1 = d;
+                if ( d.getValue() > max1.getValue() )
+                    max1 = d;
+
+            }
+            for (DataPoint d:dataSeries2) {
+                if ( d.getValue() < min2.getValue() )
+                    min2 = d;
+                if ( d.getValue() > max2.getValue() )
+                    max2 = d;
+
+            }
+
+            Picture scatterPlot = createScatterPlot(dataSeries1, dataSeries2, min1, max1, min2, max2);
+            scatterPlot.save(path);
+
+            Logger.clientCreateScatterplotImage(path, dataSeries1, dataSeries2);
+
+            System.out.println("Client action: scatterplot. Data points displayed:");
+            System.out.println("| -------------------------------------------------------|");
+            System.out.println("|           Time             |               Value       |");
+            System.out.print("|");
+            printDataPoint(min1);
+            System.out.print("|");
+            printDataPoint(max1);
+            System.out.print("|");
+            printDataPoint(min2);
+            System.out.print("|");
+            printDataPoint(max2);
+            System.out.println("| -------------------------------------------------------|");
+
+        }
     }
+
+    private Picture createScatterPlot(DataSeries dataSeries1,DataSeries dataSeries2, DataPoint min1, DataPoint max1,DataPoint min2, DataPoint max2) {
+        int width = 1100;
+        int height = 900;
+
+
+        Picture scatterPlot = new Picture(width, height);
+        Graphics2D graphics = scatterPlot.getGraphics2D();
+
+        // Y-Axis
+        int x_offset = (int)(width*0.05);
+        int y_offset = (int)(height*0.95);
+        graphics.drawLine(x_offset ,(int)(height*0.05),x_offset, y_offset);
+        // X-Axis
+        graphics.drawLine(x_offset,y_offset,(int)(width*0.95),y_offset);
+
+
+        //sensor 1 min max
+        graphics.drawString(String.valueOf(min1),(int)(width*0.06),(int)(height*0.97));
+        graphics.drawString(String.valueOf(max1),(int)(width*0.85),(int)(height*0.97));
+        //sensor 2 min max
+        graphics.drawString(String.valueOf(min2),(int)(width*0.01),(int)(height*0.94));
+        graphics.drawString(String.valueOf(max2),(int)(width*0.85),(int)(height*0.97));
+
+
+        DataPoint [] ds1 = dataSeries1.toArray(DataPoint[]::new);
+        DataPoint [] ds2 = dataSeries2.toArray(DataPoint[]::new);
+
+        for (int x=0; x<ds1.length; x++ ) {
+            double val1 = normalize(ds1[x].getValue(),min1.getValue(), max1.getValue());
+            double val2 = normalize(ds2[x].getValue(), min2.getValue(), max2.getValue());
+
+
+            graphics.drawRect((int)(width*val1), (int)(height*val2), 5,5);
+
+        }
+
+        return scatterPlot;
+    }
+
+
 
     private void displayHelp(String... args) {
         System.out.println("Usage:");
