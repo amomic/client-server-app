@@ -20,18 +20,23 @@ public final class AnalysisServer {
     private boolean waiting = true;
 
     public void run() {
-        // TODO Start here with a loop accepting new client connections.
+        // TODO Start here with a loop accepting new client connections. -> DONE
         try {
             ServerSocket serverSocket = new ServerSocket(this.serverPort);
             Logger.info("Server: waiting for connection!");
+            System.out.println("Server: waiting for connection!");
+
             while(waiting) {
                 Socket socket = serverSocket.accept();
+
                 Logger.info("Server: new client is connected!");
+                System.out.println("Server: new client is connected!");
+
                 new ServerThread(socket, dataPath).start();
             }
         } catch (IOException ioException) {
             Logger.info("Something went wrong with new client connection!");
-            System.err.println("Couldn't connect to server!");
+            System.err.println("Disconnected!");
         }
 
     }

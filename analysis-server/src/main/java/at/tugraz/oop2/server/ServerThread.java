@@ -13,13 +13,12 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
-// TODO: scatterplot, linechart, caching
+// TODO: scatterplot, linechart, caching, printovi za sve infos i errore bez logger
 
 public class ServerThread extends Thread {
     Socket socket;
     String path;
     List<Sensor> sensorList = new ArrayList<>();
-
 
     ServerThread(Socket socket, String path) {
         this.socket = socket;
@@ -35,20 +34,21 @@ public class ServerThread extends Thread {
                 ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
                 Object msg = null;
 
-                while (true) {
+                while(true) {
                     synchronized (inputStream) {
                         msg = inputStream.readObject();
 
                     }
-                   // System.out.println("````````````````````````````````````````````````````````");
-                   // System.out.println(msg);
                     if (msg instanceof String && msg.equals("queryLS")) {
                         Logger.serverRequestLS();
+                        System.out.println("Server request is sent!");
+
                         File file = new File(path + "/sensors");
                         querySensors(file);
                         outputStream.writeObject(new WrapperLsObject(sensorList));
                         outputStream.reset();
                         Logger.serverResponseLS(sensorList);
+                        System.out.println("Server response:");
 
                         System.out.println("| ----------------------------------------------------------------------------------------------------------------------------------------------|");
                         System.out.println("|           Id           |          Type          |      Location      |         Lat         |          Lon          |         Metric           |");
@@ -61,33 +61,43 @@ public class ServerThread extends Thread {
                             System.out.println(line);
                         });
 
-                    } else if (msg instanceof LineChartQueryParameters) {
+                    }
+                    // TODO: fix responses, requests and messages without logger
+                    else if (msg instanceof LineChartQueryParameters) {
                     LineChartQueryParameters parameters = (LineChartQueryParameters) msg;
+
                     Logger.serverRequestData(parameters);
+                    System.out.println("Server request is sent!");
                     DataSeries dataSeries = queryData(parameters);
 
-                    System.out.println("LINECHART");
                     outputStream.writeObject(dataSeries);
                     outputStream.reset();
                     } else if (msg instanceof ScatterPlotQueryParameters)
                     {
                         ScatterPlotQueryParameters parameters = (ScatterPlotQueryParameters) msg;
                         Logger.serverRequestData(parameters);
+                        System.out.println("Server request is sent!");
+
                         DataSeries dataSeries = queryData(parameters);
 
                         System.out.println("SCATTERPLOT");
                         outputStream.writeObject(dataSeries);
                         outputStream.reset();
                     }
+                    // TODO: end of scatterplot and linechart
 
                     else if (msg instanceof DataQueryParameters) {
                         DataQueryParameters parameters = (DataQueryParameters) msg;
                         Logger.serverRequestData(parameters);
+                        System.out.println("Server request is sent!");
+
                         DataSeries dataSeries = queryData(parameters);
                         outputStream.writeObject(dataSeries);
                         outputStream.reset();
+
                         if (dataSeries.size() != 0) {
                             Logger.serverResponseData(parameters, dataSeries);
+                            System.out.println("Server response:");
 
                             System.out.println("| ----------------------------------------------|");
                             System.out.println("|      Timestamp        |         Value         |");
@@ -105,7 +115,7 @@ public class ServerThread extends Thread {
                 }
             } catch (IOException e) {
                 Logger.info("Interrupted I/O operations -> you got IOException");
-                System.err.println("Couldn't connect to server!");
+                System.err.println("Disconnected!");
             } catch (ClassNotFoundException e) {
                 Logger.info("No definition for class with specified name found -> you got ClassNotFoundException");
                 System.err.println("Class definition missing!");// TODO: print some more reasonable things, never call this
@@ -172,7 +182,7 @@ public class ServerThread extends Thread {
 
                                 DataPoint minData = dataPoints.stream()
                                         .filter(dataPoint -> dataPoint.getValue() == min)
-                                        .findFirst().orElse(new DataPoint(LocalDateTime.now(), min));
+                                        .findFirst().orElse(new DataPoint(currentStartTime, min));
                                 interpolationResultTracking.add(min);
 
                                 result.add(minData);
@@ -189,7 +199,7 @@ public class ServerThread extends Thread {
 
                             DataPoint minData = dataPoints.stream()
                                     .filter(dataPoint -> dataPoint.getValue() == min)
-                                    .findFirst().orElse(new DataPoint(LocalDateTime.now(), min));
+                                    .findFirst().orElse(new DataPoint(currentStartTime, min));
                             interpolationResultTracking.add(min);
 
                             if(hadInterpolation == true) {
@@ -260,7 +270,7 @@ public class ServerThread extends Thread {
 
                                 DataPoint maxData = dataPoints.stream()
                                         .filter(dataPoint -> dataPoint.getValue() == max)
-                                        .findFirst().orElse(new DataPoint(LocalDateTime.now(), max));
+                                        .findFirst().orElse(new DataPoint(currentStartTime, max));
                                 interpolationResultTracking.add(max);
 
                                 result.add(maxData);
@@ -277,7 +287,7 @@ public class ServerThread extends Thread {
 
                             DataPoint maxData = dataPoints.stream()
                                     .filter(dataPoint -> dataPoint.getValue() == max)
-                                    .findFirst().orElse(new DataPoint(LocalDateTime.now(), max));
+                                    .findFirst().orElse(new DataPoint(currentStartTime, max));
                             interpolationResultTracking.add(max);
 
                             if(hadInterpolation == true) {
@@ -348,7 +358,7 @@ public class ServerThread extends Thread {
 
                                 DataPoint avgData = dataPoints.stream()
                                         .filter(dataPoint -> dataPoint.getValue() == avg)
-                                        .findFirst().orElse(new DataPoint(LocalDateTime.now(), avg));
+                                        .findFirst().orElse(new DataPoint(currentStartTime, avg));
                                 interpolationResultTracking.add(avg);
 
                                 result.add(avgData);
@@ -365,7 +375,7 @@ public class ServerThread extends Thread {
 
                             DataPoint avgData = dataPoints.stream()
                                     .filter(dataPoint -> dataPoint.getValue() == avg)
-                                    .findFirst().orElse(new DataPoint(LocalDateTime.now(), avg));
+                                    .findFirst().orElse(new DataPoint(currentStartTime, avg));
                             interpolationResultTracking.add(avg);
 
                             if(hadInterpolation == true) {
@@ -457,7 +467,7 @@ public class ServerThread extends Thread {
                                 double finalMedian = median;
                                 DataPoint medData = dataPoints.stream()
                                         .filter(dataPoint -> dataPoint.getValue() == finalMedian)
-                                        .findFirst().orElse(new DataPoint(LocalDateTime.now(), median));
+                                        .findFirst().orElse(new DataPoint(currentStartTime, median));
                                 interpolationResultTracking.add(median);
 
                                 result.add(medData);
@@ -493,7 +503,7 @@ public class ServerThread extends Thread {
                             double finalMedian = median;
                             DataPoint medData = dataPoints.stream()
                                     .filter(dataPoint -> dataPoint.getValue() == finalMedian)
-                                    .findFirst().orElse(new DataPoint(LocalDateTime.now(), median));
+                                    .findFirst().orElse(new DataPoint(currentStartTime, median));
                             interpolationResultTracking.add(median);
 
                             if(hadInterpolation == true) {
