@@ -348,11 +348,11 @@ public final class CommandHandler {
 
 
         //sensor 1 min max
-        graphics.drawString(String.valueOf(min1),(int)(width*0.06),(int)(height*0.97));
-        graphics.drawString(String.valueOf(max1),(int)(width*0.85),(int)(height*0.97));
+        graphics.drawString(String.valueOf(min1.getValue()),(int)(width*0.01),(int)(height*0.94));
+        graphics.drawString(String.valueOf(max1.getValue()),(int)(width*0.01),(int)(height*0.03));
         //sensor 2 min max
-        graphics.drawString(String.valueOf(min2),(int)(width*0.01),(int)(height*0.94));
-        graphics.drawString(String.valueOf(max2),(int)(width*0.85),(int)(height*0.97));
+        graphics.drawString(String.valueOf(min2.getValue()),(int)(width*0.06),(int)(height*0.97));
+        graphics.drawString(String.valueOf(max2.getValue()),(int)(width*0.90),(int)(height*0.97));
 
 
         DataPoint [] ds1 = dataSeries1.toArray(DataPoint[]::new);
@@ -363,7 +363,7 @@ public final class CommandHandler {
             double val2 = normalize(ds2[x].getValue(), min2.getValue(), max2.getValue());
 
 
-            graphics.drawRect((int)(width*val1), (int)(height*val2), 5,5);
+            graphics.drawRect((int)(width*val1), (int)(height*val2), 10,10);
 
         }
 
