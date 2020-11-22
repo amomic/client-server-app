@@ -256,7 +256,7 @@ public final class CommandHandler {
 
     double normalize(double value, double min, double max) {
         double first_normal = 1 - ((value - min) / (max - min));
-        return first_normal*90;
+        return first_normal*0.90;
     }
 
 
