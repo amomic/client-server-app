@@ -47,7 +47,7 @@ You should have the following programs installed on your machine:
 * A Java IDE such as Eclipse, IntelliJ or NetBeans
 * Download more RAM
 
-Docker is not required but we recomend to use ist, since we are going to test your submission with the same docker images. You can install a local version of Java for better debugging, but do not underestimate the effort it takes to *correctly* upgrade/downgrade to Java 11 if you already use an other Java version! 
+Docker is not required but we recomend to use ist, since we are going to test your submission with the same docker images. You can install a local version of Java for better debugging, but do not underestimate the effort it takes to *correctly* upgrade/downgrade to Java 11 if you already use an other Java version!
 
 ## Checking out the Framework
 
@@ -159,7 +159,7 @@ There is a **Logger** class provided by us. Use each function as described in th
 
 The **shared** projects contains a variety of helpful classes. `Util` contains mostly code for parsing and formatting timestamps. The immutable class `Sensor` represents the identifier for a sensor, which is described by the id, type, latitude, longitude, location and metric of the sensor. `DataPoint` holds a single sensor reading, consisting of a timestamp and a value.
 
-The class `DataSeries` represents a time series of sensor data. Instead of being implemented as a `List<DataPoint>`, it has a more complex, but efficient structure. A data series has a start time (inclusive), an end time (exclusive) and a number of values spaced within a given interval. The time series might have gaps in it, where no sensor reading is present. The end time can be calculated from the start time and the length of the value array. For example, if the series starts at `2019-10-01 00:00:00`, has 24 values and an interval of 60 minutes, the end time is `2019-10-02 00:00:00`. 
+The class `DataSeries` represents a time series of sensor data. Instead of being implemented as a `List<DataPoint>`, it has a more complex, but efficient structure. A data series has a start time (inclusive), an end time (exclusive) and a number of values spaced within a given interval. The time series might have gaps in it, where no sensor reading is present. The end time can be calculated from the start time and the length of the value array. For example, if the series starts at `2019-10-01 00:00:00`, has 24 values and an interval of 60 minutes, the end time is `2019-10-02 00:00:00`.
 
 
 ## Analysis Server
@@ -228,7 +228,8 @@ The Client sends a request to the Analysis Server with no parameters given. The 
 
 ## `data` Command (**15P**)
 
-The Client sends a request containing a `Sensor` instance with `sensorId` and`metric`, a start (inclusive) and end time (exclusive), optional plus a DataSeries.Operation or a DataSeries.Operation and an interval, to the Analysis Server. The Analysis Server shall then query the data from the cache, or if not present from the file. The requested DataSeries.Operation should be calculated and returned to the client, if no DataSeries.Operation is provided, all data present should be returned. DataPoints from operations should have valid LocalDateTimes - come up with a reasonable solution. The client displays the data inline in a table. Think about meaningful columns and rows. 
+The Client sends a request containing a `Sensor` instance with `sensorId` and`metric`, a start (inclusive) and end time (exclusive), optional plus a DataSeries.Operation or a DataSeries.Operation and an interval, to the Analysis Server. The Analysis Server shall then query the data from the cache, or if not present from the file. The requested DataSeries.Operation should be calculated and returned to the client, if no DataSeries.Operation is provided, all data present should be returned. DataPoints from operations should have valid LocalDateTimes - come up with a reasonable solution. The client displays the data inline in a table. Think about meaningful columns and rows.
+<a href="interpolation"></a>
 Interval is given in `integer<s|m|h|d>` (seconds, minutes, hours or days>) and you have to fit the data by sampling, so one DataPoint is given in the requested interval.
 If datapoints are missing because the .csv-file provides no data after sampling, do the following:
 * if one DataPoint is given within the given time range, use this DataPoint
@@ -249,7 +250,161 @@ The goal of this task is to let the Analysis Server cache sensor data from previ
 
 # Assignment 2 - Clustering
 
-The second assignment consists of implementing advanced data visualizations. Clustering is used to automatically find patterns in a huge data set with very little user input given. For example, the program can differentiate if the weather was good or bad, humid or dry. You will have to implement the SOM-algorithem, more on that when assignment 2 is released in december.
+The second assignment consists of implementing a clustering algorithm called self-organizing maps [SOM] or Kohonen maps. Clustering is used to automatically find patterns in a huge data set with very little user input given. The SOM algorithm uses a list of input curves and clusters these into different nodes which are connected in a grid shape. The result of this algorithm are different clusters consisting of a weight vector and zero or multiple of the curves which were given as input data.
+Based on the members of each cluster additional [analysis](#heatmapoperations) may be done.
+
+## Self-Organizing Maps
+
+Self-organizing maps is a method of clustering data. During computation a set of input data, in our case curves, will be assigned into different _nodes_ of the underlying _grid_. In order to be able to assign one input curve to one of the grids nodes each node holds a prototype (or weight) vector. During the training steps the input curves will be sequentially processed and assigned to the so-called _best-matching-unit_ (which holds the best matching reference vector). This best match will then be adjusted to the input curve, as well as all of its neighbouring nodes, which are still within the _update radius_. The adjustment needs to be scaled by the current _learning rate_. Both the update radius and the learning rate need to be reduced as the training steps continue.
+
+As soon as the training is concluded you can assign all input curves to their best matching units and report them as the final clusters.
+
+For more details please refer to the [lecture slides](https://tc.tugraz.at/main/pluginfile.php/142869/mod_folder/content/0/OOP2VO-2020-11-05-Data-Analysis-Concepts.pdf) (starting from slide 27).
+
+
+The second assignment is comprised of the following tasks, yielding 50 points in total:
+
+## `cluster` Command (**25P**)
+`cluster (all | <id>[,<id>]+) <metric> <from> <to> <interval> <operation> <length> <gridHeight> <gridWidth> <updateRadius> <learningRate> <iterationPerCurve> <resultID> <amountOfIntermediateResults>`
+
+E.g.: `cluster 1503,1693 P1 2018-01-01 2018-01-05 1h mean 24 2 2 1 0.5 10000 0xCAFE 100`
+
+The server starts clustering with the SOM algorithm using either `all` sensors or a list of sensors given by `<id>[,<id>]+` which are applicable for the given `<metric>`. You need to sample data points using the given `<interval>` and `<operation>` into curves with a fixed `<length>` starting at `<from>` until `<to>`. The query `cluster 1503,1693 P1 2018-01-01 2018-01-03 1h mean 24 ...` should therefore start the SOM algorithm with a total of 4 curves each consisting of 24 data points.
+
+`<gridHeight>`, `<gridWidth>`, `<updateRadius>`, `<learningRate>` and `<iterationPerCurve>` define the parameters with which the SOM algorithm should be started. The `<resultID>` and `<amountOfIntermediateResults>` need to be a unique ID representing the query and the amount of intermediate results the server should send to the client.
+
+Clustering is going to get interesting as soon as you cannot do it by hand anymore, in other words: The list of input data should be of noteworthy size. The server is going to need some time to execute such queries for which it will occasionally send an intermediate result to the client. If the client does not accept one of the intermediate results you may abort the computation on the server.
+
+The intermediate results are to be stored in `<your-project-root>/clusteringResults/<resultID>` in json format.
+
+Alternatively you can send all intermediate results as soon as the server has finished and postprocess those then. This will be easier to implement but lead to a _point deduction_.
+
+_Edit 09. 12. 2020.:_
+  - Your server must not accept any `cluster ...` requests where `<length>` is not a divisor of `(<to> - <from>)/<length>`, i.e. you should not process requests with which dangling data points would be left over after sampling and splitting the complete data range into `DataSeries` of length `<length>`. An example which is to be rejected: `cluster 1503 P1 2018-01-01 2018-01-02 1h mean 15 ...`. Your server needs to send an appropriate error message to the client. [TC-Posting](https://tc.tugraz.at/main/mod/forum/discuss.php?d=29308#p61523)
+  - Your server will need to interpolate missing datapoints as results of empty intervals according to the requirements for [assignment one](#interpolation), with one additional requirement: If two missing datapoints represent the last and first interval of two consecutive `DataSeries` after splitting, these two values need to be filled with their preceding or their subsequent neighbour respectively. This requirement is a minimum, if you plan on implementing a more sophisticated version of interpolation (for gaps either within one `DataSeries` and/or spanning two consecutive `DataSeries`) please consult your tutor.
+  - If your server is unable to interpolate values for a given `DataSeries` after splitting, only this exact `DataSeries` is to be removed from the input data. The `DataSeries` following the removed one need to abide to the implied begin of the split `DataSeries`. E.g. Given the following request: `cluster <id> P1 2018-01-01 2018-01-04 1h mean 24 ...` and missing values from `2018-01-02T12:00` up until `2018-01-02T15:00` the resulting set of `DataSeries` must contain _two_ `DataSeries` starting at `2018-01-01T00:00` and `2018-01-03T00:00` respectively.
+  - If your server receives a request with a given list of sensor ids you will need to check the validity w.r.t. each single sensor. ([TC-Posting](https://tc.tugraz.at/main/mod/forum/discuss.php?d=29308#p61523)) Two cases may emerge here:
+    * The sensor id is invalid. In this case your server must process the request with all valid id - metric combinations and warn the client about all invalid sensor ids.
+    * The given sensor does not feature the given metric. The same rule as above applies. The client needs to be informed about the id of the sensor that could not be featured in the clustering algorithm.
+
+
+## `listresults` Command (**1P**)
+
+`listresults`
+
+This command needs to list all finished clustering results.
+
+_Edit 21. 12. 2020.:_
+
+  - This command needs to be solely implemented on the client-side.
+
+## `rm` Command (**1P**)
+
+`rm <resultID>`
+
+This command will remove the results of a finished clustering query.
+
+_Edit 21. 12. 2020.:_
+
+  - This command needs to be solely implemented on the client-side.
+
+## `inspectcluster` Command (**2P**)
+
+`inspectcluster <resultID> <heightIndex> <widthIndex> <boolVerbose>`
+
+Prints information about the given cluster node indexed by `<heightIndex>` and `<widthIndex>`. An example can be seen below. `<boolVerbose>` defines whether information about all cluster members should be printed. In the example below this boolean would toggle the `List of all members:` either off or on.
+
+
+```
++-------------------------------------+
+| Node (i, j) from resultID           |
++--------------+----------------------+
+| #Members     | (int)#member         |
++--------------+----------------------+
+| #Error       | (float)Error         |
++--------------+----------------------+
+| #Entropy     | (double)entropy      |
++--------------+----------------------+
+| List of all members:                |
++--------+------+---------------------+
+| <from> | <to> | <sensor>            |
+| <from> | <to> | <sensor>            |
+| <from> | <to> | <sensor>            |
+| ...    | ...  | ...                 |
++--------+------+---------------------+
+
+```
+
+
+## `plotcluster` Command (**12P**)
+
+`plotcluster <resultID> <clusterPlotHeight> <clusterPlotWidth> <boolPlotClusterMember> <heatMapOperation> <boolPlotAllFrames>`
+
+This command plots either the final result of the query associated to `<resultID>` or the plots for each of the intermediate results (depending on `<boolPlotAllFrames> `). These can then be used for visualization in a video. Creating atleast one videos is mandatory in order to be able to get points from this part of the assignment. We will provide you with [commands](#videocommands) to create such videos.
+
+Your frames should consist of a status bar containing information about:
+  - the current iteration count,
+  - the current update radius,
+  - the current learning rate and
+  - your *group number*.
+
+Additional useful information is obviously welcome.
+
+Besides the status bar each of the frames need to plot all the different clusters with respect to their cartesian coordinates in the grid, i.e. cluster `(0,0)` should be in the top left corner, `(0,1)` next to it on the right and so on. The height and width of each individual cluster plot is defined via `<clusterPlotHeight>` and `<clusterPlotWidth>`. `<boolPlotClusterMember>` defines whether all of the members or only the weight of the nodes should be plotted.
+
+In order to easily use the `concat`-demuxer of ffmpeg, you may want to aggregate a *sorted* list of your plots as your are creating them. This will make it ease to use [ffmpeg](#videocommands) later.
+
+
+## Operations for Heatmaps (**6P**) <a name="heatmapoperations"></a>
+
+With the command described above we are able to visualize the behaviour and final result of the SOM algorithm. Additionally one can visualize some analysis results from the clusters, like
+  - the normalized amount of members per cluster or
+  - the normalized sum of errors with respect to the clusters weight vector.
+
+To be able to actually plot a heatmap (e.g. as the background color of each cluster) you will need to normalize the values for each of your cluster. The color of the heatmap with respect to a given cluster can then be calculated for example as the interpolation between to colors or the alpha value of the background color (i.e. the more opaque the background color the higher the normalized value).
+
+
+## Creating and Uploading Videos (**3P**) <a name="videocommands"></a>
+
+Creating videos is possible with `ffmpeg` as follows:
+
+`ffmpeg -r <framesPerSecond> -f concat -i <inputFile> -vcodec libx264 -crf 25 -pix_fmt yuv420p <videoName>.mp4`
+
+where `<framesPerSecond>` are the frames to be displayed per second (about 10 - 15 is a good amount), `<inputFile>` is a *sorted* list of frames:
+
+```
+file 'iter_0_clusterplot.png'
+file 'iter_1000_clusterplot.png'
+...
+```
+
+and `<videoName>` is the name of the video to be created. You will need to upload at least one video with interesting findings to the teach center (do not upload the whole source code there!).
+
+## Reference Videos <a href="referencevideos"></a>
+
+  - [#1](https://www.youtube.com/watch?v=Ua-DINOeHFY)
+  - [#2](https://www.youtube.com/watch?v=zQtQTtP1OzY)
+  - [#3](https://www.youtube.com/watch?v=fGFd3-ULLOE)
+  - [#4](https://www.youtube.com/watch?v=kIlkY8fyTfs)
+
+
+## Bonus Tasks for Assignment 2
+
+* _Different Kernel Functions_:
+
+    The update function of the SOM usually works in a boolean fashion: A neighbouring node is either _within_ the radius or it is not. In order to make more use of the topological layout of the nodes one may also implement a 'gaussian kernel function' as the update function.
+
+    A gaussian kernel will more heavily update nodes which are nearer to the best matching unit and will influence nodes which are further away less.
+
+* _Distance Entropy_:
+
+    Our provided data features the quite important location of the sensors. An interesting measure for a given cluster is the distribution of locations of its members sensors. We call this the distance entropy. If a cluster only features curves from the exact same sensor its entropy is 0, whereas clusters with members from multiple different sensors will have a very high distance entropy.
+
+    In order to calculate the entropy of a cluster you will need to implement the [haversine](https://www.movable-type.co.uk/scripts/latlong.html) formula for distances on spheres. The entropy will then be the weighted sum of all distance between all members of a cluster. You may plot the normalized entropies as one of the heatmap operations.
+
+* _U-Matrix_
+
+    The _unified distance matrix_ is a `<gridHeight> - 1`x`<gridWidth> - 1`-matrix consisting of grayscale values which represents the euclidean distances between the connected nodes weight vectors of a SOM grid. The U-Matrix is therefore another way to cluster the input data, namely by clustering the final clusters. Light gray areas of the resulting grayscale image indicate areas of nodes which weight vectors are closer, whereas darker parts of the image indicate borders between these cluster of nodes.
 
 # Bonus Tasks
 

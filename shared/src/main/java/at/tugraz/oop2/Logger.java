@@ -2,7 +2,9 @@ package at.tugraz.oop2;
 
 import at.tugraz.oop2.data.DataPoint;
 import at.tugraz.oop2.data.DataQueryParameters;
+import at.tugraz.oop2.data.SOMQueryParameters;
 import at.tugraz.oop2.data.DataSeries;
+import at.tugraz.oop2.data.ClusterDescriptor;
 import at.tugraz.oop2.data.Sensor;
 
 import java.time.LocalDateTime;
@@ -140,6 +142,70 @@ public class Logger {
         if (OUTPUTHIDDEN) return;
         println(getClientAction() + "Scatterplot:" + getNewline() + "Image located at: \"" + path + "\"" + getNewline() + "x Data: " + getNewline() + getFormattedDataSeries(dataXaxis) + getNewline() + "y Data: " + getNewline() + getFormattedDataSeries(dataYaxis));
     }
+	
+	 public static void clientRequestCluster(SOMQueryParameters params) {
+        //TODO should be executed on the clientside when a cluster request is made
+        if (OUTPUTHIDDEN) return;
+        println(getClientRequest() + "SOM Query:" + getNewline() + getFormattedParameters(params));
+    }
+
+    public static void serverRequestCluster(SOMQueryParameters params) {
+        //TODO should be executed on the serverside when a cluster request is made
+        if (OUTPUTHIDDEN) return;
+        println(getServerRequest() + "SOM Query:" + getNewline() + getFormattedParameters(params));
+    }
+
+    public static void serverIntermediateResponse(SOMQueryParameters params, int iteration) {
+        //TODO should be executed on the serverside when an intermediate result is sent to the client
+        if (OUTPUTHIDDEN) return;
+        println(getServerResponse() + "SOM Intermediate Results for iteration " + iteration + ":" + getNewline() + getFormattedParameters(params)); //TODO
+    }
+
+    public static void clientIntermediateResponse(SOMQueryParameters params, int iteration) {
+        //TODO should be executed on the clientside when an intermediate result is received
+        if (OUTPUTHIDDEN) return;
+        println(getClientResponse() + "SOM Intermediate Results for iteration " + iteration + ":" + getNewline() + getFormattedParameters(params)); //TODO
+    }
+
+    public static void serverResponseCluster(SOMQueryParameters params) {
+        //TODO should be executed on the serverside when the final result is sent to the client
+        if (OUTPUTHIDDEN) return;
+        println(getServerResponse() + "SOM Final Results for:" + getNewline() + getFormattedParameters(params)); //TODO
+    }
+
+    public static void clientResponseCluster(SOMQueryParameters params) {
+        //TODO should be executed on the serverside when the final result is sent to the client
+        if (OUTPUTHIDDEN) return;
+        println(getClientResponse() + "SOM Final Results for:" + getNewline() + getFormattedParameters(params)); //TODO
+    }
+
+    public static void clientListResults() {
+        //TODO should be executed on the clientside when the list of all results is to be printed
+        if (OUTPUTHIDDEN) return;
+        println(getClientAction() + "List Results."); //TODO
+    }
+
+    public static void clientRemoveResult(Integer resultID) {
+        //TODO should be executed on the clientside when a clustering result is to be removed
+        if (OUTPUTHIDDEN) return;
+        println(getClientAction() + "Remove Result: " + hex(resultID)); //TODO
+    }
+
+    public static void clientInspectCluster(Integer resultID, Integer heightIndex, Integer widthIndex, ClusterDescriptor clusterDescriptor) {
+        //TODO should be executed on the clientside when listing information about a given cluster
+        if (OUTPUTHIDDEN) return;
+        println(getClientAction() + "Cluster (" + heightIndex + ", " + widthIndex + ") from " + hex(resultID) + ":" + getNewline() +
+                getFormattedClusterDescriptor(clusterDescriptor));
+    }
+
+    public static void clientPlotCluster(Integer resultID, boolean plotClusterMembers, String heatMapOperation, boolean plotAllFrames) {
+        //TODO should be executed on the clientside when listing information about a given cluster
+        if (OUTPUTHIDDEN) return;
+        String frames = plotAllFrames ? "all frames" : "final frame";
+        heatMapOperation = (heatMapOperation.equals("")) ? " no heatMapOperation" : heatMapOperation;
+        println(getClientAction() + "Plotting " + frames + " for " + hex(resultID) + " with " + heatMapOperation);
+    }
+
 
     private static String getClientRequest() {
         return ANSI_BLUE + "CLIENT - REQUEST:" + ANSI_RESET + "  ";
@@ -209,7 +275,16 @@ public class Logger {
                 "operation: \"" + params.getOperation() + "\"" + getNewline() +
                 "interval:  \"" + params.getInterval() + "\"";
     }
-
+	
+	private static String getFormattedParameters(SOMQueryParameters params) {
+        return "sensors:    \"" + params.getSensorIds().toString() + "\"" + getNewline() +
+               "type:       \"" + params.getMetric() + "\"" + getNewline() +
+               "from:       \"" + params.getFrom() + "\" until \"" + params.getTo() + "\"" + getNewline() +
+               "packing:     "  + params.getLength() + " DataPoints into one curve, using " + params.getOperation() + " with a sampling size of " + params.getInterval() + " seconds" + getNewline() +
+               "SOM-Params: \"(" + params.getGridHeight() + ", " + params.getGridWidth() + ") - Grid with a learning rate of " + params.getLearningRate() + " and an initial update Radius of " + params.getUpdateRadius() + " times the diameter of the grid" + getNewline() +
+               "             "  + "for " + params.getIterationsPerCurve() + " iterations per curve.\"" + getNewline() +
+               "ResultID:   \"" + hex(params.getResultId()) + "\" will contain " + params.getAmountOfIntermediateResults() + " intermediate results.";
+    }
 
     private static String getFormattedDataSeries(DataSeries data) {
 
@@ -234,10 +309,34 @@ public class Logger {
         content.append("| -------------------------------------- |");
         return content.toString();
     }
+	
+	 private static String getFormattedClusterDescriptor(ClusterDescriptor cD) {
+        StringBuilder content = new StringBuilder();
+        content.append("| ----------------------------------- |");
+        content.append(getNewline());
+        content.append("| #Members    | " + String.format("%6d (%1.3f)", cD.getMembers().size(), cD.getNormalizedAmountOfMembers()));
+        content.append(getNewline());
+        content.append("| ----------------------------------- |");
+        content.append(getNewline());
+        content.append("| #Error      | " + String.format("%5.3f (%1.3f)", cD.getError(), cD.getNormalizedError()));
+        content.append(getNewline());
+        content.append("| ----------------------------------- |");
+        content.append(getNewline());
+        content.append("| #Entropy    | " + String.format("%5.3f (%1.3f)", cD.getDistanceEntropy(), cD.getNormalizedDistanceEntropy()));
+        content.append(getNewline());
+        content.append("| ----------------------------------- |");
+        return content.toString();
+    }
+
 
 
     private static void println(String msg) {
         System.out.println(now() + msg);
+    }
+	
+	
+	 private static String hex(Integer id) {
+        return String.format("0x%x", id).toUpperCase();
     }
 
     private static String getNewline() {
