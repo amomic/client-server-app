@@ -30,6 +30,8 @@ public final class CommandHandler {
         commands.put("data", this::queryData);
         commands.put("linechart", this::queryLineChart);
         commands.put("scatterplot", this::queryScatterplot);
+        // added command
+        commands.put("cluster", this::queryCluster);
     }
 
     private static void validateArgc(String[] args, int argc) throws CommandException {
@@ -408,7 +410,7 @@ public final class CommandHandler {
             Logger.err("Length not divisor of (<to> - <from>)/<length>");
         }
 
-        final DataSeries dataSeries = conn.queryCluster(somQueryParameters).get();
+        final ClusterDescriptor dataSeries = conn.queryCluster(somQueryParameters).get();
 
     }
 

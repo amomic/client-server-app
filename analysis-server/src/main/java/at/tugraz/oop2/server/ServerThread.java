@@ -662,4 +662,98 @@ public class ServerThread extends Thread {
             }
         }
     }
+
+    // TODO: implement clustering
+    private void getClusteringData(File file, SOMQueryParameters parameters, Sensor sensor, List<DataPoint> dataPoints) throws IOException {
+
+        String sensorId = String.valueOf(parameters.getSensorIds());
+        String metric = parameters.getMetric();
+        File[] files = file.listFiles();
+        for (File f : files) {
+            if (f.isDirectory() && f.getName().contains(sensorId)) {
+                File[] csvFiles = f.listFiles();
+                for (File csvFile : csvFiles) {
+                    if (csvFile.getName().contains(sensorId +".csv")) {
+                        BufferedReader br = new BufferedReader(new FileReader(csvFile));
+                        String line;
+                        boolean ignoreFirst = true;
+                        while ((line = br.readLine()) != null) {
+                            if (ignoreFirst) {
+                                line = br.readLine();
+                                ignoreFirst = false;
+                            }
+                            String[] objects = line.split(";",-1);
+
+                            // TODO: read SOMQueryParameters
+                            List<String> id = List.of(objects[0]);
+                            List<Integer> sensorIdList = new ArrayList<Integer>();
+                            for(String s : id) sensorIdList.add(Integer.valueOf(s));
+
+                            String type = objects[1];
+                            String location = objects[2];
+                            double lat = Double.parseDouble(objects[3]);
+                            double lon = Double.parseDouble(objects[4]);
+                            LocalDateTime time = Util.stringToLocalDateTime(objects[5]);
+                            sensor = new Sensor(Integer.valueOf(sensorId), type, lat, lon, location, metric);
+
+                            if (time.isEqual(parameters.getFrom()) || (time.isAfter(parameters.getFrom()) && time.isBefore(parameters.getTo()))) {
+                                switch (type) {
+                                    case "SDS011":
+                                        if (metric.equals("P1")) {
+                                            // index = 6
+                                            double metricValue = Double.parseDouble(objects[6]);
+                                            DataPoint dataPoint = new DataPoint(time, metricValue);
+                                            dataPoints.add(dataPoint);
+                                        } else if (metric.equals("P2")) {
+                                            // index = 9
+                                            double metricValue = Double.parseDouble(objects[9]);
+                                            DataPoint dataPoint = new DataPoint(time, metricValue);
+                                            dataPoints.add(dataPoint);
+                                        }
+                                        break;
+                                    case "DHT22":
+                                        if (metric.equals("temperature")) {
+                                            // index = 6
+                                            double metricValue = Double.parseDouble(objects[6]);
+                                            DataPoint dataPoint = new DataPoint(time, metricValue);
+                                            dataPoints.add(dataPoint);
+                                        } else if (metric.equals("humidity")) {
+                                            // index = 7
+                                            double metricValue = Double.parseDouble(objects[7]);
+                                            DataPoint dataPoint = new DataPoint(time, metricValue);
+                                            dataPoints.add(dataPoint);
+                                        }
+                                        break;
+                                    case "BME280":
+                                        if (metric.equals("temperature")) {
+                                            // index = 9
+                                            double metricValue = Double.parseDouble(objects[9]);
+                                            DataPoint dataPoint = new DataPoint(time, metricValue);
+                                            dataPoints.add(dataPoint);
+                                        } else if (metric.equals("humidity")) {
+                                            // index = 10
+                                            double metricValue = Double.parseDouble(objects[10]);
+                                            DataPoint dataPoint = new DataPoint(time, metricValue);
+                                            dataPoints.add(dataPoint);
+                                        }
+                                        break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    private void queryCluster(SOMQueryParameters parameters) throws IOException {
+        File file = new File(path + "/sensors");
+
+        // this will be overwritten by getData() so we use random values to avouid null warning
+        Sensor sensor = new Sensor(parameters.getSensorIds().indexOf(0), "", 2d,3d,"", parameters.getMetric());
+        List<DataPoint> dataPoints = new ArrayList<>();
+        Set<DataPoint> result = new TreeSet<>();
+
+        getClusteringData(file, parameters, sensor, dataPoints);
+
+    }
 }
