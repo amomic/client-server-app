@@ -114,6 +114,16 @@ public final class ClientConnection implements AutoCloseable {
         return pictureCompletableFuture;
     }
 
+    public CompletableFuture<DataSeries> queryCluster(SOMQueryParameters somQueryParameters) throws IOException, ClassNotFoundException {
+        CompletableFuture<DataSeries> dataSeriesCompletableFuture = new CompletableFuture<>();
+        outputStream.writeObject(somQueryParameters);
+
+        DataSeries dataSeries = (DataSeries) inputStream.readObject();
+        outputStream.reset();
+        dataSeriesCompletableFuture.complete(dataSeries);
+        return dataSeriesCompletableFuture;
+    }
+
 
     @FunctionalInterface
     public interface ConnectionEventHandler {

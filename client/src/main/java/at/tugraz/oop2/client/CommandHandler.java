@@ -260,9 +260,7 @@ public final class CommandHandler {
     }
 
 
-    // TODO: scatterplot
     private void queryScatterplot(String... args) throws Exception {
-        //TODO input parsing similar to above
         validateArgc(args, 7, 9);
         final int sensorId1 = Integer.parseUnsignedInt(args[0]);
         final int sensorId2 = Integer.parseUnsignedInt(args[2]);
@@ -369,6 +367,49 @@ public final class CommandHandler {
 
         return scatterPlot;
     }
+
+    ////////////////////////////cluster
+
+    private void queryCluster(String... args) throws Exception {
+        validateArgc(args, 14, 15);
+        final List<DataSeries> sensorId = List.of(args[0]);  //fix this to appropriate format to take argument list of sensors or all sensors
+        final String type = args[1];
+        final LocalDateTime from = Util.stringToLocalDateTime(args[2]);
+        final LocalDateTime to = Util.stringToLocalDateTime(args[3]);
+        final DataSeries.Operation operation = args.length < 5 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[4].toUpperCase());
+        final long interval = args.length < 6 ? from.until(to, ChronoUnit.SECONDS) : Util.stringToInterval(args[5]);
+        final int length =  Integer.parseUnsignedInt(args[6]);
+        final int grid_length =  Integer.parseUnsignedInt(args[7]);
+        final int grid_width =  Integer.parseUnsignedInt(args[8]);
+        final double radius =  Integer.parseUnsignedInt(args[9]);
+        final double rate =  Integer.parseUnsignedInt(args[10]);
+        final int iterations =  Integer.parseUnsignedInt(args[11]);
+        final int resultId = Integer.parseUnsignedInt(args[12]);
+        final int inter_results =  Integer.parseUnsignedInt(args[13]);
+
+
+        final SOMQueryParameters somQueryParameters = new SOMQueryParameters(sensorId, type, from, to, operation, interval, length,grid_length,grid_width,radius,rate,
+                iterations, resultId,inter_results);
+
+        Logger.clientRequestCluster(somQueryParameters);
+        System.out.println("Client request is sent!");
+
+        double from_epoch = from.toEpochSecond(ZoneOffset.UTC);
+        double to_epoch = to.toEpochSecond(ZoneOffset.UTC);
+
+        if(((to_epoch - from_epoch)/length) % length != 0) //check if this is meant by divisor
+        {
+            Logger.err("Length not divisor of (<to> - <from>)/<length>");
+        }
+
+        final DataSeries dataSeries = conn.queryCluster(somQueryParameters).get();
+
+    }
+
+
+
+
+    ///////////////////////////////////////
 
 
 
