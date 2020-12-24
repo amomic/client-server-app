@@ -368,7 +368,7 @@ public final class CommandHandler {
         return scatterPlot;
     }
 
-    ////////////////////////////cluster
+    ////////////////////////////cluster remove and listresults
 
     private void queryCluster(String... args) throws Exception {
         validateArgc(args, 14, 15);
@@ -408,9 +408,30 @@ public final class CommandHandler {
 
 
 
+    private void listResults(String... args) throws Exception {
+        validateArgc(args, 0);
+        Logger.clientListResults();
+        System.out.println("Client request is sent!");
+
+        final List<Sensor> results = conn.queryResults().get();
+        System.out.println("Client action: clustering");
+        results.forEach(result -> {
+            String line = String.format("|  %20s |  %20s |  %20s |  %20s |  %20s |  %20s |", String.valueOf(result.getId()),
+                    result.getType(), result.getLocation(), String.valueOf(result.getLatitude()), //get right values grids,width
+                    String.valueOf(result.getLongitude()), result.getMetric());
+            System.out.println(line);
+        });
+
+    }
+
+    private void removeResults(String... args) throws Exception {
+        validateArgc(args, 1);
+        final int resultId = Integer.parseUnsignedInt(args[0]);
+        Logger.clientRemoveResult(resultId);
+        System.out.println("Client request is sent!");
+    }
 
     ///////////////////////////////////////
-
 
 
     private void displayHelp(String... args) {

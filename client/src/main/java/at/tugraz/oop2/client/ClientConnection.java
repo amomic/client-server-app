@@ -114,6 +114,8 @@ public final class ClientConnection implements AutoCloseable {
         return pictureCompletableFuture;
     }
 
+    ////////////////////////////////////// cluster result and remove
+
     public CompletableFuture<DataSeries> queryCluster(SOMQueryParameters somQueryParameters) throws IOException, ClassNotFoundException {
         CompletableFuture<DataSeries> dataSeriesCompletableFuture = new CompletableFuture<>();
         outputStream.writeObject(somQueryParameters);
@@ -124,6 +126,18 @@ public final class ClientConnection implements AutoCloseable {
         return dataSeriesCompletableFuture;
     }
 
+    public CompletableFuture<List<Sensor>> queryResults() throws IOException, ClassNotFoundException {
+        CompletableFuture<List<Sensor>> results = new CompletableFuture<>();
+
+        outputStream.writeObject("queryResults");
+
+        WrapperLsObject wrapperLsObject = (WrapperLsObject) inputStream.readObject();
+        outputStream.reset();
+        results.complete(wrapperLsObject.getSensorList());
+        return results;
+    }
+
+    //////////////////////////////
 
     @FunctionalInterface
     public interface ConnectionEventHandler {
