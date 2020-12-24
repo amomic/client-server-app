@@ -370,9 +370,15 @@ public final class CommandHandler {
 
     ////////////////////////////cluster remove and listresults
 
+    // TODO: check this with tutor
+
     private void queryCluster(String... args) throws Exception {
         validateArgc(args, 14, 15);
-        final List<DataSeries> sensorId = List.of(args[0]);  //fix this to appropriate format to take argument list of sensors or all sensors
+        // FIXED just to avoid error, does not meand it will work -> in order to be able to compile project
+        final List<String> sensorId = List.of(args[0]);
+        List<Integer> intList = new ArrayList<Integer>();
+        for(String s : sensorId) intList.add(Integer.valueOf(s));
+
         final String type = args[1];
         final LocalDateTime from = Util.stringToLocalDateTime(args[2]);
         final LocalDateTime to = Util.stringToLocalDateTime(args[3]);
@@ -388,7 +394,7 @@ public final class CommandHandler {
         final int inter_results =  Integer.parseUnsignedInt(args[13]);
 
 
-        final SOMQueryParameters somQueryParameters = new SOMQueryParameters(sensorId, type, from, to, operation, interval, length,grid_length,grid_width,radius,rate,
+        final SOMQueryParameters somQueryParameters = new SOMQueryParameters(intList, type, from, to, operation, interval, length,grid_length,grid_width,radius,rate,
                 iterations, resultId,inter_results);
 
         Logger.clientRequestCluster(somQueryParameters);
@@ -405,7 +411,6 @@ public final class CommandHandler {
         final DataSeries dataSeries = conn.queryCluster(somQueryParameters).get();
 
     }
-
 
 
     private void listResults(String... args) throws Exception {
