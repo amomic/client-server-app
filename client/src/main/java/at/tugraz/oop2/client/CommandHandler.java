@@ -438,7 +438,43 @@ public final class CommandHandler {
         System.out.println("Client request is sent!");
     }
 
-    ///////////////////////////////////////
+
+    private void inspectCluster(String... args) throws Exception {
+        validateArgc(args, 4, 5);
+        final int resultId = Integer.parseUnsignedInt(args[0]);
+        final int heigthIdx =  Integer.parseUnsignedInt(args[1]);
+        final int widthIdx =  Integer.parseUnsignedInt(args[2]);
+        String boolVerbose = args[3];
+        final List<Double>  weights; //what are weights, it asks as parameter but aren't explained in description
+
+        //final ClusterDescriptor cD = new ClusterDescriptor(heigthIdx,widthIdx,weights);
+
+        //Logger.clientInspectCluster(resultId,heigthIdx,widthIdx,cD);
+
+        /*StringBuilder content = new StringBuilder();
+
+        //UNCLEAR BOOLEAN VAR: IF FALSE SHOULD WE PRINT ANYTHING AT ALL (if statement easily to be added if so) and rest is
+        //commented not to get error because of weight
+        content.append("| ----------------------------------- |");
+        content.append(getNewline());
+        content.append("| #Members    | " + String.format("%6d (%1.3f)", cD.getMembers().size(), cD.getNormalizedAmountOfMembers()));
+        content.append(getNewline());
+        content.append("| ----------------------------------- |");
+        content.append(getNewline());
+        content.append("| #Error      | " + String.format("%5.3f (%1.3f)", cD.getError(), cD.getNormalizedError()));
+        content.append(getNewline());
+        content.append("| ----------------------------------- |");
+        content.append(getNewline());
+        content.append("| #Entropy    | " + String.format("%5.3f (%1.3f)", cD.getDistanceEntropy(), cD.getNormalizedDistanceEntropy()));
+        content.append(getNewline());
+        content.append("| ----------------------------------- |");*/
+
+
+    }
+
+
+
+        ///////////////////////////////////////
 
 
     private void displayHelp(String... args) {
