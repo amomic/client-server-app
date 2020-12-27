@@ -663,7 +663,8 @@ public class ServerThread extends Thread {
         }
     }
 
-    // TODO: implement clustering
+    // TODO: 2nd assignment implementation
+    // FIXED: reading clustering data from file
     private void getClusteringData(File file, SOMQueryParameters parameters, Sensor sensor, List<DataPoint> dataPoints) throws IOException {
 
         String sensorId = String.valueOf(parameters.getSensorIds());
@@ -684,59 +685,68 @@ public class ServerThread extends Thread {
                             }
                             String[] objects = line.split(";",-1);
 
-                            // TODO: read SOMQueryParameters
-                            List<String> id = List.of(objects[0]);
-                            List<Integer> sensorIdList = new ArrayList<Integer>();
-                            for(String s : id) sensorIdList.add(Integer.valueOf(s));
+                            boolean isRequired = false;
+                            Integer id = Integer.valueOf(objects[0]);
 
-                            String type = objects[1];
-                            String location = objects[2];
-                            double lat = Double.parseDouble(objects[3]);
-                            double lon = Double.parseDouble(objects[4]);
-                            LocalDateTime time = Util.stringToLocalDateTime(objects[5]);
-                            sensor = new Sensor(Integer.valueOf(sensorId), type, lat, lon, location, metric);
+                            if(id == 0) {
+                                isRequired = true;
+                            } else {
+                                for (Integer commandSensorId : parameters.getSensorIds()) {
+                                    if (commandSensorId == id)
+                                        isRequired = true;
+                                }
+                            }
 
-                            if (time.isEqual(parameters.getFrom()) || (time.isAfter(parameters.getFrom()) && time.isBefore(parameters.getTo()))) {
-                                switch (type) {
-                                    case "SDS011":
-                                        if (metric.equals("P1")) {
-                                            // index = 6
-                                            double metricValue = Double.parseDouble(objects[6]);
-                                            DataPoint dataPoint = new DataPoint(time, metricValue);
-                                            dataPoints.add(dataPoint);
-                                        } else if (metric.equals("P2")) {
-                                            // index = 9
-                                            double metricValue = Double.parseDouble(objects[9]);
-                                            DataPoint dataPoint = new DataPoint(time, metricValue);
-                                            dataPoints.add(dataPoint);
-                                        }
-                                        break;
-                                    case "DHT22":
-                                        if (metric.equals("temperature")) {
-                                            // index = 6
-                                            double metricValue = Double.parseDouble(objects[6]);
-                                            DataPoint dataPoint = new DataPoint(time, metricValue);
-                                            dataPoints.add(dataPoint);
-                                        } else if (metric.equals("humidity")) {
-                                            // index = 7
-                                            double metricValue = Double.parseDouble(objects[7]);
-                                            DataPoint dataPoint = new DataPoint(time, metricValue);
-                                            dataPoints.add(dataPoint);
-                                        }
-                                        break;
-                                    case "BME280":
-                                        if (metric.equals("temperature")) {
-                                            // index = 9
-                                            double metricValue = Double.parseDouble(objects[9]);
-                                            DataPoint dataPoint = new DataPoint(time, metricValue);
-                                            dataPoints.add(dataPoint);
-                                        } else if (metric.equals("humidity")) {
-                                            // index = 10
-                                            double metricValue = Double.parseDouble(objects[10]);
-                                            DataPoint dataPoint = new DataPoint(time, metricValue);
-                                            dataPoints.add(dataPoint);
-                                        }
-                                        break;
+                            if(isRequired) {
+                                String type = objects[1];
+                                String location = objects[2];
+                                double lat = Double.parseDouble(objects[3]);
+                                double lon = Double.parseDouble(objects[4]);
+                                LocalDateTime time = Util.stringToLocalDateTime(objects[5]);
+                                sensor = new Sensor(Integer.valueOf(sensorId), type, lat, lon, location, metric);
+
+                                if (time.isEqual(parameters.getFrom()) || (time.isAfter(parameters.getFrom()) && time.isBefore(parameters.getTo()))) {
+                                    switch (type) {
+                                        case "SDS011":
+                                            if (metric.equals("P1")) {
+                                                // index = 6
+                                                double metricValue = Double.parseDouble(objects[6]);
+                                                DataPoint dataPoint = new DataPoint(time, metricValue);
+                                                dataPoints.add(dataPoint);
+                                            } else if (metric.equals("P2")) {
+                                                // index = 9
+                                                double metricValue = Double.parseDouble(objects[9]);
+                                                DataPoint dataPoint = new DataPoint(time, metricValue);
+                                                dataPoints.add(dataPoint);
+                                            }
+                                            break;
+                                        case "DHT22":
+                                            if (metric.equals("temperature")) {
+                                                // index = 6
+                                                double metricValue = Double.parseDouble(objects[6]);
+                                                DataPoint dataPoint = new DataPoint(time, metricValue);
+                                                dataPoints.add(dataPoint);
+                                            } else if (metric.equals("humidity")) {
+                                                // index = 7
+                                                double metricValue = Double.parseDouble(objects[7]);
+                                                DataPoint dataPoint = new DataPoint(time, metricValue);
+                                                dataPoints.add(dataPoint);
+                                            }
+                                            break;
+                                        case "BME280":
+                                            if (metric.equals("temperature")) {
+                                                // index = 9
+                                                double metricValue = Double.parseDouble(objects[9]);
+                                                DataPoint dataPoint = new DataPoint(time, metricValue);
+                                                dataPoints.add(dataPoint);
+                                            } else if (metric.equals("humidity")) {
+                                                // index = 10
+                                                double metricValue = Double.parseDouble(objects[10]);
+                                                DataPoint dataPoint = new DataPoint(time, metricValue);
+                                                dataPoints.add(dataPoint);
+                                            }
+                                            break;
+                                    }
                                 }
                             }
                         }
@@ -745,15 +755,15 @@ public class ServerThread extends Thread {
             }
         }
     }
+
+    // TODO: implement clustering with the help of getClusteringData command
+    // Notes: first 7 args are covered by reading from csv file, other args are used as input for SOM algorithm
+    //        get input from command line and use SOMQueryParameters for input of SOM algorithm
+    //        write the SOM algorithm and do necessary calculations with the help of data mentioned above
+    //        try setting weights to value between 0 and 1 and increase or decrease them with every iteration to get as near as possible to entered input
+    //        return value
+
     private void queryCluster(SOMQueryParameters parameters) throws IOException {
-        File file = new File(path + "/sensors");
-
-        // this will be overwritten by getData() so we use random values to avouid null warning
-        Sensor sensor = new Sensor(parameters.getSensorIds().indexOf(0), "", 2d,3d,"", parameters.getMetric());
-        List<DataPoint> dataPoints = new ArrayList<>();
-        Set<DataPoint> result = new TreeSet<>();
-
-        getClusteringData(file, parameters, sensor, dataPoints);
 
     }
 }

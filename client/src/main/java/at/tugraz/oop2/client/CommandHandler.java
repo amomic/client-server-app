@@ -370,17 +370,19 @@ public final class CommandHandler {
         return scatterPlot;
     }
 
-    ////////////////////////////cluster remove and listresults
-
-    // TODO: check this with tutor
+    // TODO: 2nd assignment implementation
 
     private void queryCluster(String... args) throws Exception {
         validateArgc(args, 14, 15);
-        // FIXED just to avoid error, does not meand it will work -> in order to be able to compile project
-        final List<String> sensorId = List.of(args[0]);
+        // FIXED
+        final String sensorIds = args[0];
         List<Integer> intList = new ArrayList<Integer>();
-        for(String s : sensorId) intList.add(Integer.valueOf(s));
-
+        if(sensorIds.equals("all"))
+            intList.add(0);
+        else{
+            String sensorIdsSplit[] = sensorIds.split(",");
+            for(String s : sensorIdsSplit) intList.add(Integer.valueOf(s));
+        }
         final String type = args[1];
         final LocalDateTime from = Util.stringToLocalDateTime(args[2]);
         final LocalDateTime to = Util.stringToLocalDateTime(args[3]);
@@ -395,9 +397,9 @@ public final class CommandHandler {
         final int resultId = Integer.parseUnsignedInt(args[12]);
         final int inter_results =  Integer.parseUnsignedInt(args[13]);
 
-
-        final SOMQueryParameters somQueryParameters = new SOMQueryParameters(intList, type, from, to, operation, interval, length,grid_length,grid_width,radius,rate,
-                iterations, resultId,inter_results);
+        // TODO: check this with tutor
+        final SOMQueryParameters somQueryParameters = new SOMQueryParameters(intList, type, from, to, operation, interval, length, grid_length, grid_width, radius, rate,
+                iterations, resultId, inter_results);
 
         Logger.clientRequestCluster(somQueryParameters);
         System.out.println("Client request is sent!");
@@ -405,7 +407,8 @@ public final class CommandHandler {
         double from_epoch = from.toEpochSecond(ZoneOffset.UTC);
         double to_epoch = to.toEpochSecond(ZoneOffset.UTC);
 
-        if(((to_epoch - from_epoch)/length) % length != 0) //check if this is meant by divisor
+        // TODO: check if this is meant by divisor
+        if(((to_epoch - from_epoch) / length) % length != 0)
         {
             Logger.err("Length not divisor of (<to> - <from>)/<length>");
         }
@@ -414,7 +417,7 @@ public final class CommandHandler {
 
     }
 
-
+    // FIXME: return results are not good, should return something else
     private void listResults(String... args) throws Exception {
         validateArgc(args, 0);
         Logger.clientListResults();
@@ -438,14 +441,14 @@ public final class CommandHandler {
         System.out.println("Client request is sent!");
     }
 
-
+    // TODO: what is meant by weights
     private void inspectCluster(String... args) throws Exception {
         validateArgc(args, 4, 5);
         final int resultId = Integer.parseUnsignedInt(args[0]);
         final int heigthIdx =  Integer.parseUnsignedInt(args[1]);
         final int widthIdx =  Integer.parseUnsignedInt(args[2]);
         String boolVerbose = args[3];
-        final List<Double>  weights; //what are weights, it asks as parameter but aren't explained in description
+        final List<Double>  weights;
 
         //final ClusterDescriptor cD = new ClusterDescriptor(heigthIdx,widthIdx,weights);
 
@@ -472,11 +475,6 @@ public final class CommandHandler {
 
     }
 
-
-
-        ///////////////////////////////////////
-
-
     private void displayHelp(String... args) {
         System.out.println("Usage:");
         System.out.println("  ls\t- Lists all sensors and metrics.");
@@ -484,6 +482,14 @@ public final class CommandHandler {
         System.out.println("  linechart <sensorId> <metric> <from-time> <to-time> [operation [interval<s|m|h|d>]]\t- Creates a Linechart png with values measured by a sensor.");
         System.out.println("  scatterplot <sensorId1> <metric1> <sensorId2> <metric2> <from-time> <to-time> [operation [interval<s|m|h|d>]]\t- Creates a Scatterplot png with values measured by two sensors.");
         System.out.println("  exit\t- Terminate the CLI.");
+
+        // added
+        System.out.println("  cluster (all | <id>[,<id>]+) <metric> <from> <to> <interval> <operation> <length> <gridHeight> <gridWidth> <updateRadius> <learningRate> <iterationPerCurve> <resultID> <amountOfIntermediateResults>\t- Intermediate results will be stored.");
+        System.out.println("  listresults\t- Lists all finished clustering results.");
+        System.out.println("  rm <resultID>\t- Removes the results of a finished clustering query.");
+        System.out.println("  inspectcluster <resultID> <heightIndex> <widthIndex> <boolVerbose>\t- Prints information about the given cluster node indexed by <heightIndex> and <widthIndex>.");
+        System.out.println("  plotcluster <resultID> <clusterPlotHeight> <clusterPlotWidth> <boolPlotClusterMember> <heatMapOperation> <boolPlotAllFrames>\t- Plots either the final result of the query associated to <resultID> or the plots for each of the intermediate results.");
+
         System.out.println("More information is contained in the assignment description and in the folder queries/.");
         System.out.println();
     }
