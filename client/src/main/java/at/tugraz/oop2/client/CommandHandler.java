@@ -481,15 +481,15 @@ public final class CommandHandler {
         System.out.println("  data <sensorId> <metric> <from-time> <to-time> [operation [interval<s|m|h|d>]]\t- Displays historic values measured by a sensor.");
         System.out.println("  linechart <sensorId> <metric> <from-time> <to-time> [operation [interval<s|m|h|d>]]\t- Creates a Linechart png with values measured by a sensor.");
         System.out.println("  scatterplot <sensorId1> <metric1> <sensorId2> <metric2> <from-time> <to-time> [operation [interval<s|m|h|d>]]\t- Creates a Scatterplot png with values measured by two sensors.");
-        System.out.println("  exit\t- Terminate the CLI.");
 
-        // added
-        System.out.println("  cluster (all | <id>[,<id>]+) <metric> <from> <to> <interval> <operation> <length> <gridHeight> <gridWidth> <updateRadius> <learningRate> <iterationPerCurve> <resultID> <amountOfIntermediateResults>\t- Intermediate results will be stored.");
+        // TODO: ask if this is needed
+        System.out.println("  cluster (all | <id>[,<id>]+) <metric> <from> <to> <interval> <operation> <length> <gridHeight> <gridWidth> <updateRadius> <learningRate> <iterationPerCurve> <resultID> <amountOfIntermediateResults>\t- Intermediate results stored.");
         System.out.println("  listresults\t- Lists all finished clustering results.");
         System.out.println("  rm <resultID>\t- Removes the results of a finished clustering query.");
         System.out.println("  inspectcluster <resultID> <heightIndex> <widthIndex> <boolVerbose>\t- Prints information about the given cluster node indexed by <heightIndex> and <widthIndex>.");
-        System.out.println("  plotcluster <resultID> <clusterPlotHeight> <clusterPlotWidth> <boolPlotClusterMember> <heatMapOperation> <boolPlotAllFrames>\t- Plots either the final result of the query associated to <resultID> or the plots for each of the intermediate results.");
+        System.out.println("  plotcluster <resultID> <clusterPlotHeight> <clusterPlotWidth> <boolPlotClusterMember> <heatMapOperation> <boolPlotAllFrames>\t- Plots either the final result of the query associated to <resultID> or of the intermediate results.");
 
+        System.out.println("  exit\t- Terminate the CLI.");
         System.out.println("More information is contained in the assignment description and in the folder queries/.");
         System.out.println();
     }
