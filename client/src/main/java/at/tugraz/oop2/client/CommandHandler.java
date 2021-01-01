@@ -372,6 +372,8 @@ public final class CommandHandler {
 
     ////////////////////////////cluster remove and listresults
 
+
+
     // TODO: check this with tutor
 
     private void queryCluster(String... args) throws Exception {
@@ -395,9 +397,26 @@ public final class CommandHandler {
         final int resultId = Integer.parseUnsignedInt(args[12]);
         final int inter_results =  Integer.parseUnsignedInt(args[13]);
 
+        // all oder bestimmte id sensor + metric + to from +interval +operation +lenght (dass wird von unseren kurven bestimmt )+eine höhe +eine breite +
+        // radius+learningsrate (halften von radius)+iteration per curves
+
+        //final List<ClusterDescriptor> clusters = conn.queryCluster(new Sensor(sensorId || intList, type) ,from, to, interval, length, grid_length,grid_width,radius,rate,
+           //     iterations).get();
+        //if(clusters.size() == 0) {
+         //   Logger.err("Two or more missing cluster points. No response from the server.");
+         //   System.out.println("Two or more missing cluster points. No response from the server.");
+       // }
+
+        if (grid_length <= 0 || grid_width <= 0)
+            throw new IllegalArgumentException("Width and Height have to be positive");
+
+        final String cluster = Integer.toString(resultId);
 
         final SOMQueryParameters somQueryParameters = new SOMQueryParameters(intList, type, from, to, operation, interval, length,grid_length,grid_width,radius,rate,
                 iterations, resultId,inter_results);
+
+        //final List<ClusterDescriptor> cluster = conn.queryCluster(new SOMQueryParameters(intList, type, from, to, operation, interval, length,grid_length,grid_width,radius,rate,
+                //iterations, resultId,inter_results);
 
         Logger.clientRequestCluster(somQueryParameters);
         System.out.println("Client request is sent!");
@@ -411,6 +430,8 @@ public final class CommandHandler {
         }
 
         final ClusterDescriptor dataSeries = conn.queryCluster(somQueryParameters).get();
+
+
 
     }
 
@@ -483,6 +504,18 @@ public final class CommandHandler {
         System.out.println("  data <sensorId> <metric> <from-time> <to-time> [operation [interval<s|m|h|d>]]\t- Displays historic values measured by a sensor.");
         System.out.println("  linechart <sensorId> <metric> <from-time> <to-time> [operation [interval<s|m|h|d>]]\t- Creates a Linechart png with values measured by a sensor.");
         System.out.println("  scatterplot <sensorId1> <metric1> <sensorId2> <metric2> <from-time> <to-time> [operation [interval<s|m|h|d>]]\t- Creates a Scatterplot png with values measured by two sensors.");
+        //print
+        System.out.println(
+                "  cluster (all | <id>[,<id>]+) <metric> <from> <to> <interval> <operation> <length> <gridHeight> <gridWidth> <updateRadius> <learningRate> <iterationPerCurve> <resultID> <amountOfIntermediateResults>");
+        System.out.println("              - SOM clustering operation on the server.");
+        System.out.println("  listresults - List available intermediate results.");
+        System.out.println("  rm          - Delete intermediate result.");
+        System.out.println("  inspectcluster <resultID> <heightIndex> <widthIndex> <boolVerbose>");
+        System.out.println("              - Show information about a cluster in intermediate result.");
+        System.out.println(
+                "  plotcluster <resultID> <clusterPlotHeight> <clusterPlotWidth> <boolPlotClusterMember> <heatMapOperation> <boolPlotAllFrames>");
+        System.out.println("              - Plot cluster from intermediate result.");
+        System.out.println("  exit        - Terminate the CLI.");
         System.out.println("  exit\t- Terminate the CLI.");
         System.out.println("More information is contained in the assignment description and in the folder queries/.");
         System.out.println();

@@ -670,7 +670,9 @@ public class ServerThread extends Thread {
         String metric = parameters.getMetric();
         File[] files = file.listFiles();
         for (File f : files) {
-            if (f.isDirectory() && f.getName().contains(sensorId)) {
+            if (f == null)
+                Logger.err(String.format("Could not load files. Possibly not a directory"));
+             else if (f.isDirectory() && f.getName().contains(sensorId)) {
                 File[] csvFiles = f.listFiles();
                 for (File csvFile : csvFiles) {
                     if (csvFile.getName().contains(sensorId +".csv")) {
@@ -749,7 +751,8 @@ public class ServerThread extends Thread {
         File file = new File(path + "/sensors");
 
         // this will be overwritten by getData() so we use random values to avouid null warning
-        Sensor sensor = new Sensor(parameters.getSensorIds().indexOf(0), "", 2d,3d,"", parameters.getMetric());
+        Sensor sensor = new Sensor(parameters.getSensorIds().indexOf(0), "", 2d,3d,"",
+                                    parameters.getMetric());
         List<DataPoint> dataPoints = new ArrayList<>();
         Set<DataPoint> result = new TreeSet<>();
 
