@@ -370,7 +370,7 @@ public final class CommandHandler {
         return scatterPlot;
     }
 
-    ////////////////////////////cluster remove and listresults
+    // TODO: 2nd assignment implementation
 
 
 
@@ -378,11 +378,15 @@ public final class CommandHandler {
 
     private void queryCluster(String... args) throws Exception {
         validateArgc(args, 14, 15);
-        // FIXED just to avoid error, does not meand it will work -> in order to be able to compile project
-        final List<String> sensorId = List.of(args[0]);
+        // FIXED
+        final String sensorIds = args[0];
         List<Integer> intList = new ArrayList<Integer>();
-        for(String s : sensorId) intList.add(Integer.valueOf(s));
-
+        if(sensorIds.equals("all"))
+            intList.add(0);
+        else{
+            String sensorIdsSplit[] = sensorIds.split(",");
+            for(String s : sensorIdsSplit) intList.add(Integer.valueOf(s));
+        }
         final String type = args[1];
         final LocalDateTime from = Util.stringToLocalDateTime(args[2]);
         final LocalDateTime to = Util.stringToLocalDateTime(args[3]);
@@ -424,7 +428,8 @@ public final class CommandHandler {
         double from_epoch = from.toEpochSecond(ZoneOffset.UTC);
         double to_epoch = to.toEpochSecond(ZoneOffset.UTC);
 
-        if(((to_epoch - from_epoch)/length) % length != 0) //check if this is meant by divisor
+        // TODO: check if this is meant by divisor
+        if(((to_epoch - from_epoch) / length) % length != 0)
         {
             Logger.err("Length not divisor of (<to> - <from>)/<length>");
         }
@@ -435,7 +440,7 @@ public final class CommandHandler {
 
     }
 
-
+    // FIXME: return results are not good, should return something else
     private void listResults(String... args) throws Exception {
         validateArgc(args, 0);
         Logger.clientListResults();
@@ -459,14 +464,14 @@ public final class CommandHandler {
         System.out.println("Client request is sent!");
     }
 
-
+    // TODO: what is meant by weights
     private void inspectCluster(String... args) throws Exception {
         validateArgc(args, 4, 5);
         final int resultId = Integer.parseUnsignedInt(args[0]);
         final int heigthIdx =  Integer.parseUnsignedInt(args[1]);
         final int widthIdx =  Integer.parseUnsignedInt(args[2]);
         String boolVerbose = args[3];
-        final List<Double>  weights; //what are weights, it asks as parameter but aren't explained in description
+        final List<Double>  weights;
 
         //final ClusterDescriptor cD = new ClusterDescriptor(heigthIdx,widthIdx,weights);
 
@@ -492,11 +497,6 @@ public final class CommandHandler {
 
 
     }
-
-
-
-        ///////////////////////////////////////
-
 
     private void displayHelp(String... args) {
         System.out.println("Usage:");
