@@ -6,6 +6,8 @@ import at.tugraz.oop2.data.*;
 import lombok.Data;
 
 import java.awt.*;
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -32,6 +34,8 @@ public final class CommandHandler {
         commands.put("scatterplot", this::queryScatterplot);
         // added command
         commands.put("cluster", this::queryCluster);
+        commands.put("plotcluster", this::queryPlotCluster);
+
     }
 
     private static void validateArgc(String[] args, int argc) throws CommandException {
@@ -372,8 +376,6 @@ public final class CommandHandler {
 
     // TODO: 2nd assignment implementation
 
-
-
     // TODO: check this with tutor
 
     private void queryCluster(String... args) throws Exception {
@@ -387,6 +389,7 @@ public final class CommandHandler {
             String sensorIdsSplit[] = sensorIds.split(",");
             for(String s : sensorIdsSplit) intList.add(Integer.valueOf(s));
         }
+
         final String type = args[1];
         final LocalDateTime from = Util.stringToLocalDateTime(args[2]);
         final LocalDateTime to = Util.stringToLocalDateTime(args[3]);
@@ -401,30 +404,11 @@ public final class CommandHandler {
         final int resultId = Integer.parseUnsignedInt(args[12]);
         final int inter_results =  Integer.parseUnsignedInt(args[13]);
 
-        // all oder bestimmte id sensor + metric + to from +interval +operation +lenght (dass wird von unseren kurven bestimmt )+eine höhe +eine breite +
-        // radius+learningsrate (halften von radius)+iteration per curves
-
-        //final List<ClusterDescriptor> clusters = conn.queryCluster(new Sensor(sensorId || intList, type) ,from, to, interval, length, grid_length,grid_width,radius,rate,
-           //     iterations).get();
-        //if(clusters.size() == 0) {
-         //   Logger.err("Two or more missing cluster points. No response from the server.");
-         //   System.out.println("Two or more missing cluster points. No response from the server.");
-       // }
-
-        if (grid_length <= 0 || grid_width <= 0)
-            throw new IllegalArgumentException("Width and Height have to be positive");
-
-        final String cluster = Integer.toString(resultId);
 
         final SOMQueryParameters somQueryParameters = new SOMQueryParameters(intList, type, from, to, operation, interval, length,grid_length,grid_width,radius,rate,
                 iterations, resultId,inter_results);
-
-        //final List<ClusterDescriptor> cluster = conn.queryCluster(new SOMQueryParameters(intList, type, from, to, operation, interval, length,grid_length,grid_width,radius,rate,
-                //iterations, resultId,inter_results);
-
         Logger.clientRequestCluster(somQueryParameters);
         System.out.println("Client request is sent!");
-
         double from_epoch = from.toEpochSecond(ZoneOffset.UTC);
         double to_epoch = to.toEpochSecond(ZoneOffset.UTC);
 
@@ -433,8 +417,20 @@ public final class CommandHandler {
         {
             Logger.err("Length not divisor of (<to> - <from>)/<length>");
         }
-
         final ClusterDescriptor dataSeries = conn.queryCluster(somQueryParameters).get();
+
+
+
+        //todo dd
+        // all oder bestimmte id sensor + metric + to from +interval +operation +lenght (dass wird von unseren kurven bestimmt )+eine höhe +eine breite +
+        // radius+learningsrate (halften von radius)+iteration per curves
+
+        //final List<ClusterDescriptor> clusters = conn.queryCluster(new Sensor(sensorId || intList, type) ,from, to, interval, length, grid_length,grid_width,radius,rate,
+        //     iterations).get();
+        //if(clusters.size() == 0) {
+        //   Logger.err("Two or more missing cluster points. No response from the server.");
+        //   System.out.println("Two or more missing cluster points. No response from the server.");
+        // }
 
 
 
@@ -497,8 +493,39 @@ public final class CommandHandler {
 
 
     }
+    private void queryPlotCluster(String... args) throws Exception{
+        final int resultId = Integer.parseUnsignedInt(args[0]);
+        final int clusterPlotHeight = Integer.parseInt(args[1]);
+        final int clusterPlotWidth = Integer.parseInt(args[2]);
+        final boolean boolPlotClusterMembers = Boolean.parseBoolean(args[3]);
+        final String heatMapOperation = args[4].toUpperCase();
+        //final ClusterPlots.HeatmapOperation heatmapOperation = ClusterPlots.HeatmapOperation.valueOf(heatMapOperation);
+        final boolean boolPlotAllFrames = Boolean.parseBoolean(args[5]);
 
-    private void displayHelp(String... args) {
+        if (clusterPlotHeight <= 0 || clusterPlotWidth <= 0)
+            Logger.err("Width and Height have to be positive.");
+        System.out.println("Width and Height have to be positive.");
+        Logger.clientPlotCluster(resultId, boolPlotClusterMembers, heatMapOperation, boolPlotAllFrames);
+        final String cluster = Integer.toString(resultId);
+        if(cluster == String.valueOf(0)) {
+            Logger.err("Two or more missing cluster points. No response from the server.");
+            System.out.println("Two or more missing cluster points. No response from the server.");
+        }
+        //todo
+       // packet vorbereiten für ausdrücken  im server
+        //oder cluster handler
+        final List<Sensor> results = conn.queryResults().get();
+        final List<Integer> files = Collections.synchronizedList(new ArrayList<>());
+        results.forEach
+                ((final Sensor p) -> {
+            if (!boolPlotAllFrames )
+                System.out.println("Warning: Latest intermediate result found is not the finished result.");
+            });
+    }
+
+
+
+        private void displayHelp(String... args) {
         System.out.println("Usage:");
         System.out.println("  ls\t- Lists all sensors and metrics.");
         System.out.println("  data <sensorId> <metric> <from-time> <to-time> [operation [interval<s|m|h|d>]]\t- Displays historic values measured by a sensor.");
@@ -516,7 +543,6 @@ public final class CommandHandler {
                 "  plotcluster <resultID> <clusterPlotHeight> <clusterPlotWidth> <boolPlotClusterMember> <heatMapOperation> <boolPlotAllFrames>");
         System.out.println("              - Plot cluster from intermediate result.");
         System.out.println("  exit        - Terminate the CLI.");
-        System.out.println("  exit\t- Terminate the CLI.");
         System.out.println("More information is contained in the assignment description and in the folder queries/.");
         System.out.println();
     }
