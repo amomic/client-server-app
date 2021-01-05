@@ -6,12 +6,9 @@ import at.tugraz.oop2.data.*;
 import lombok.Data;
 
 import java.awt.*;
-<<<<<<< Updated upstream
 import java.io.IOException;
 import java.nio.file.Paths;
-=======
 import java.nio.charset.StandardCharsets;
->>>>>>> Stashed changes
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;

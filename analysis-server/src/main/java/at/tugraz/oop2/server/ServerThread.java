@@ -767,24 +767,12 @@ public class ServerThread extends Thread {
         }
     }
 
-        // this will be overwritten by getData() so we use random values to avouid null warning
-       // Sensor sensor = new Sensor(parameters.getSensorIds().indexOf(0), "", 2d,3d,"",
-                                    //parameters.getMetric());
-        //List<DataPoint> dataPoints = new ArrayList<>();
-        Set<DataPoint> result = new TreeSet<>();
     // TODO: implement clustering with the help of getClusteringData command
     // Notes: first 7 args are covered by reading from csv file, other args are used as input for SOM algorithm
     //        get input from command line and use SOMQueryParameters for input of SOM algorithm
     //        write the SOM algorithm and do necessary calculations with the help of data mentioned above
     //        try setting weights to value between 0 and 1 and increase or decrease them with every iteration to get as near as possible to entered input
     //        return value
-
-<<<<<<< Updated upstream
-
-
-
-    private void queryCluster(SOMQueryParameters parameters) throws IOException {
-=======
     private ClusterDescriptor queryCluster(SOMQueryParameters parameters) throws IOException {
         // TODO: write the function
         File file = new File(path + "/sensors");
@@ -795,7 +783,5 @@ public class ServerThread extends Thread {
         ClusterDescriptor series = new ClusterDescriptor(1,1, listica );
 
         return series;
->>>>>>> Stashed changes
-
     }
 }
