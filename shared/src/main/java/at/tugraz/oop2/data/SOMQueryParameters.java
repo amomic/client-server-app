@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -12,7 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 @EqualsAndHashCode
 @ToString
-public class SOMQueryParameters {
+public class SOMQueryParameters implements Serializable {
     private final List<Integer> sensorIds;
     private final String metric;
     private final LocalDateTime from;

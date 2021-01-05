@@ -6,8 +6,12 @@ import at.tugraz.oop2.data.*;
 import lombok.Data;
 
 import java.awt.*;
+<<<<<<< Updated upstream
 import java.io.IOException;
 import java.nio.file.Paths;
+=======
+import java.nio.charset.StandardCharsets;
+>>>>>>> Stashed changes
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -393,15 +397,15 @@ public final class CommandHandler {
         final String type = args[1];
         final LocalDateTime from = Util.stringToLocalDateTime(args[2]);
         final LocalDateTime to = Util.stringToLocalDateTime(args[3]);
-        final DataSeries.Operation operation = args.length < 5 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[4].toUpperCase());
-        final long interval = args.length < 6 ? from.until(to, ChronoUnit.SECONDS) : Util.stringToInterval(args[5]);
+        final long interval = args.length < 5 ? from.until(to, ChronoUnit.SECONDS) : Util.stringToInterval(args[4]);
+        final DataSeries.Operation operation =  args.length < 6 ? DataSeries.Operation.NONE : DataSeries.Operation.valueOf(args[5].toUpperCase());
         final int length =  Integer.parseUnsignedInt(args[6]);
         final int grid_length =  Integer.parseUnsignedInt(args[7]);
         final int grid_width =  Integer.parseUnsignedInt(args[8]);
-        final double radius =  Integer.parseUnsignedInt(args[9]);
-        final double rate =  Integer.parseUnsignedInt(args[10]);
+        final double radius =  Double.parseDouble(args[9]);
+        final double rate =  Double.parseDouble(args[10]);
         final int iterations =  Integer.parseUnsignedInt(args[11]);
-        final int resultId = Integer.parseUnsignedInt(args[12]);
+        final int resultId = Integer.decode(args[12]);
         final int inter_results =  Integer.parseUnsignedInt(args[13]);
 
 

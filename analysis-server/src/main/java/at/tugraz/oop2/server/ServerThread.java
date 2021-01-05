@@ -4,7 +4,6 @@ import at.tugraz.oop2.Logger;
 import at.tugraz.oop2.Util;
 import at.tugraz.oop2.data.*;
 
-import javax.xml.crypto.Data;
 import java.io.*;
 import java.net.Socket;
 import java.time.LocalDateTime;
@@ -91,7 +90,18 @@ public class ServerThread extends Thread {
                             Logger.err("Two or more missing DataPoints existing after performing operation for requested interval");
                             System.out.println("Two or more missing DataPoints existing after performing operation for requested interval");
                         }
+                    } else if (msg instanceof SOMQueryParameters) {
+                        // TODO: print result on server side same as for data command after implementing clustering command
+                        SOMQueryParameters SomParameters = (SOMQueryParameters) msg;
+                        System.out.println("Server request is sent!");
+
+                        ClusterDescriptor dataSeriesSom = queryCluster(SomParameters);
+
+                        outputStream.writeObject(dataSeriesSom);
+                        outputStream.reset();
+
                     }
+
                 }
             } catch (IOException e) {
                 Logger.info("Interrupted I/O operations -> you got IOException");
@@ -664,7 +674,6 @@ public class ServerThread extends Thread {
     }
 
     // TODO: 2nd assignment implementation
-    // FIXED: reading clustering data from file
     private void getClusteringData(File file, SOMQueryParameters parameters, Sensor sensor, List<DataPoint> dataPoints) throws IOException {
 
         String sensorId = String.valueOf(parameters.getSensorIds());
@@ -770,10 +779,23 @@ public class ServerThread extends Thread {
     //        try setting weights to value between 0 and 1 and increase or decrease them with every iteration to get as near as possible to entered input
     //        return value
 
+<<<<<<< Updated upstream
 
 
 
     private void queryCluster(SOMQueryParameters parameters) throws IOException {
+=======
+    private ClusterDescriptor queryCluster(SOMQueryParameters parameters) throws IOException {
+        // TODO: write the function
+        File file = new File(path + "/sensors");
+
+        System.out.println(file + "Stasa");
+
+        List<Double> listica = null;
+        ClusterDescriptor series = new ClusterDescriptor(1,1, listica );
+
+        return series;
+>>>>>>> Stashed changes
 
     }
 }
