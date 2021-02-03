@@ -110,6 +110,7 @@ public class ServerThread extends Thread {
                             String sensorMetric = sensor.getMetric();
                             String paramMetric = somParameters.getMetric();
                             if (!sensorMetric.equals(paramMetric)) {
+                                System.out.println("Check entered metric!");
                                 invalidSensorsOrMetrics.add("(invalid sensor/metric pair): (sensor) " + sensor.getId() + " - (metric) " + paramMetric);
                             } else {
                                 ClusteringResult result = queryCluster(somParameters);
@@ -127,7 +128,6 @@ public class ServerThread extends Thread {
                         outputStream.reset();
                         return;
                     }
-
                 }
             }
         } catch (IOException e) {
@@ -445,10 +445,7 @@ public class ServerThread extends Thread {
 
 
     // TODO: 2nd assignment implementation
-    // cluster 1503,1693 P1 2018-01-01 2018-01-05 1h mean 24 2 2 1 0.5 5 0xCAFE 5
 
-    // cluster 1555,1111 P1 2018-01-01 2018-01-01 1h mean 24 2 2 1 0.5 10 0xCAFE 10
-    // TODO: additional checks (3rd and 4th point from ass description)
     private ClusteringResult queryCluster(SOMQueryParameters parameters) throws IOException {
         List<DataSeries> inputData = this.getCurves(parameters);
         SOMHandler somHandler = new SOMHandler(
