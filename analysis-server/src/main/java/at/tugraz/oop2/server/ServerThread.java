@@ -17,12 +17,10 @@ public class ServerThread extends Thread {
     String path;
     List<Sensor> sensorList = new ArrayList<>();
 
-
     ServerThread(Socket socket, String path) {
         this.socket = socket;
         this.path = path;
     }
-
 
     @Override
     public void run() {
@@ -114,7 +112,6 @@ public class ServerThread extends Thread {
                             if (!sensorMetric.equals(paramMetric)) {
                                 invalidSensorsOrMetrics.add("(invalid sensor/metric pair): (sensor) " + sensor.getId() + " - (metric) " + paramMetric);
                             } else {
-                                // TODO: list valid sensors
                                 ClusteringResult result = queryCluster(somParameters);
                                 outputStream.writeObject(result);
                                 outputStream.reset();
@@ -124,7 +121,7 @@ public class ServerThread extends Thread {
                     }
 
                     if (invalidSensorsOrMetrics.size() != 0) {
-                        System.out.println("heloooooogg");
+                        System.out.println("You entered invalid sensor or its metrics!");
                         outputStream.writeObject(null);
                         outputStream.writeObject(invalidSensorsOrMetrics);
                         outputStream.reset();
@@ -141,7 +138,6 @@ public class ServerThread extends Thread {
             System.err.println("Class definition missing!");
         }
     }
-
 
     private void querySensors(File file) throws IOException {
         boolean is_not_directory = false;
@@ -217,7 +213,6 @@ public class ServerThread extends Thread {
         return series;
     }
 
-
     private List<DataPoint> filterDataPointsByTimeInterval(
             List<DataPoint> dataPoints,
             LocalDateTime from, LocalDateTime to,
@@ -232,7 +227,6 @@ public class ServerThread extends Thread {
         Collections.sort(filteredPoints);
         return filteredPoints;
     }
-
 
     private List<DataPoint> interpolateDataPoints(List<DataPoint> dataPoints,
                                                   LocalDateTime from, LocalDateTime to,
@@ -467,7 +461,6 @@ public class ServerThread extends Thread {
         return new ClusteringResult(trainingClusters, finalCluster);
     }
 
-
     private List<DataSeries> getCurves(SOMQueryParameters parameters) throws IOException {
         List<DataSeries> inputData = new ArrayList<>();
         List<Integer> sensorIds = new ArrayList<>();
@@ -483,24 +476,19 @@ public class ServerThread extends Thread {
                 DataQueryParameters queryParameters = new DataQueryParameters(id, parameters.getMetric(),
                         parameters.getFrom(), parameters.getTo(), parameters.getOperation(), parameters.getInterval());
 
-                // query data
                 try {
                     DataSeries queryResult = queryData(queryParameters);
                     if (queryResult.isEmpty()) {
                         throw new Exception();
                     }
-                    // add partitions
 
                     inputData.addAll(this.partitionDataSeries(queryResult, parameters.getLength()));
                 } catch (Exception e) {
                     continue;
-                    //TODO WARNING sensor not found
                 }
-                //System.out.print("SENSOR ID "+ id);
             }
         } else {
             for (int sensorId : parameters.getSensorIds()) {
-                // for each sensorId query data to get DataSeries
                 DataQueryParameters queryParameters = new DataQueryParameters(sensorId, parameters.getMetric(),
                         parameters.getFrom(), parameters.getTo(), parameters.getOperation(), parameters.getInterval());
                 try {
@@ -509,19 +497,12 @@ public class ServerThread extends Thread {
                     if (queryResult.isEmpty()) {
                         throw new Exception();
                     }
-                    // add partitions
                     inputData.addAll(this.partitionDataSeries(queryResult, parameters.getLength()));
                 } catch (Exception e) {
                     continue;
-                    //TODO WARNING sensor not found
                 }
-                //System.out.print("SENSOR ID "+ sensorId);
             }
-
-
         }
-
-
         return inputData;
     }
 
@@ -539,16 +520,15 @@ public class ServerThread extends Thread {
         return partitioned;
     }
 
-
     public void checkIfPartionable(LocalDateTime from, LocalDateTime to, int length, long interval) throws IllegalArgumentException {
         long diff = Duration.between(from, to).toSeconds();
         long numberOfPoints = diff / interval;
         if (numberOfPoints % length != 0) {
-            throw new IllegalArgumentException("Cannot divide into arrays of the same lenght");
+            throw new IllegalArgumentException("Cannot divide into arrays of the same length!");
         }
     }
 
-
+    //TODO: plotcluster command
     private void queryPlotCluster(SOMQueryParameters parameters) throws IOException {
 
 

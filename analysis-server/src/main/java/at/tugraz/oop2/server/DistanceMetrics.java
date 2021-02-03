@@ -6,7 +6,7 @@ public class DistanceMetrics {
     public static double euclidean(double[] vectorA, double[] vectorB)
     {
         if (vectorA.length != vectorB.length)
-            throw new IllegalArgumentException("Vectors must be the same size");
+            throw new IllegalArgumentException("Vectors must be the same size!");
         double squareSum = 0;
         for (int i = 0; i < vectorA.length; i++)
         {
@@ -19,7 +19,7 @@ public class DistanceMetrics {
     public static double euclidean(int[] vectorA, int[] vectorB)
     {
         if (vectorA.length != vectorB.length)
-            throw new IllegalArgumentException("Vectors must be the same size");
+            throw new IllegalArgumentException("Vectors must be the same size!");
         double squareSum = 0;
         for (int i = 0; i < vectorA.length; i++)
         {

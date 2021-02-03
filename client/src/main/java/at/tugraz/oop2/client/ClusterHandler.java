@@ -17,9 +17,7 @@ public class ClusterHandler {
     private SOMQueryParameters params;
 
     ClusterHandler() {
-
     }
-
 
     public static void result(final String cluster, final boolean all) throws CommandHandler.CommandException {
         final File folder = toDoCluster(cluster);

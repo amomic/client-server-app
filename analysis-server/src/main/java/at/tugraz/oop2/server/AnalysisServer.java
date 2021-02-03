@@ -11,7 +11,6 @@ import java.io.*;
 public final class AnalysisServer {
     private final int serverPort;
     private final String dataPath;
-    //public ServerThread serverThread;
 
     public AnalysisServer(int serverPort, String dataPath) {
         this.serverPort = serverPort;
@@ -21,9 +20,7 @@ public final class AnalysisServer {
     private boolean waiting = true;
 
     public void run() {
-        // TODO Start here with a loop accepting new client connections. -> DONE
         try {
-
             ServerSocket serverSocket = new ServerSocket(serverPort);
             Logger.info("Server: waiting for connection!");
             System.out.println("Server: waiting for connection!");
@@ -40,6 +37,5 @@ public final class AnalysisServer {
             Logger.info("Something went wrong with new client connection!");
             System.err.println("Disconnected!");
         }
-
     }
 }

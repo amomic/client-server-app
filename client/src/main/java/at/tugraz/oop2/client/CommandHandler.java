@@ -36,7 +36,7 @@ public final class CommandHandler {
         commands.put("data", this::queryData);
         commands.put("linechart", this::queryLineChart);
         commands.put("scatterplot", this::queryScatterplot);
-        // added command
+        // added commands
         commands.put("cluster", this::queryCluster);
         commands.put("plotcluster", this::queryPlotCluster);
         commands.put("listresults", this::listResults);
@@ -372,9 +372,7 @@ public final class CommandHandler {
             double val1 = normalize(ds1[x].getValue(),min1.getValue(), max1.getValue());
             double val2 = normalize(ds2[x].getValue(), min2.getValue(), max2.getValue());
 
-
             graphics.drawRect((int)(width*val1), (int)(height*val2), 10,10);
-
         }
 
         return scatterPlot;
@@ -420,14 +418,11 @@ public final class CommandHandler {
         }
         try{
             series = conn.queryCluster(somQueryParameters).get();
-        }catch(Exception e)
-        { //todo exception
-
-            // Logger.err(e.toString());
+        } catch(Exception e)
+        {
             System.out.println("Error: " + e.getMessage());
             return;
         }
-
 
         if(numberOfIntervals % somQueryParameters.getLength() == 0)
         {
@@ -446,9 +441,67 @@ public final class CommandHandler {
         }
     }
 
+    @SneakyThrows
+    private void listResults(String... args) throws CommandException {
+        validateArgc(args, 0, 1);
+        String[] listResultIDs;
+        System.out.println("Client action: Listing result IDs: ");
+        File currentDir = new File("clusteringResults/"); // current directory
 
+        listResultIDs = currentDir.list();
 
-    // TODO: plotcluster
+        for (String resultID : listResultIDs) {
+            System.out.println(resultID);
+        }
+
+        Logger.clientListResults();
+    }
+
+    public static void getFiles(File dir) throws CommandException, IOException {
+        File[] files = dir.listFiles();
+        String inhalt = null;
+        BufferedReader in = null;
+        try {
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    getFiles(file);
+                } else {
+                    System.out.println(" file:" + file.getCanonicalPath());
+                    in = new BufferedReader(new FileReader(file));
+                    while ((inhalt = in.readLine()) != null) {
+                        System.out.println(inhalt);
+                    }
+                }
+            }
+        } catch (CommandException | IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void removeResults(String... args) throws CommandException {
+        validateArgc(args, 1);
+
+        String id = args[0];
+        int resultID = 0;
+        if(id.contains("x")){
+            resultID = Integer.decode(id);
+        }
+        else
+            resultID = Integer.parseInt(id);
+        System.out.println("Client request is sent!");
+        String path = "clusteringResults/" + resultID;
+        File delete_file = new File(path);
+        File[] allContents = delete_file.listFiles();
+        if (allContents != null) {
+            for (File file : allContents) {
+                file.delete();
+            }
+        }
+        delete_file.delete();
+        Logger.clientRemoveResult(resultID);
+    }
+
+    // TODO: plotcluster command
     private List<Integer> queryPlotCluster(String... args) throws Exception{
         final int resultId = Integer.parseUnsignedInt(args[0]);
         final int clusterPlotHeight = Integer.parseInt(args[1]);
@@ -487,68 +540,7 @@ public final class CommandHandler {
         return files;
     }
 
-    // TODO: listresults
-    @SneakyThrows
-    private void listResults(String... args) throws CommandException {
-        validateArgc(args, 0, 1);
-        System.out.println("Client action: listing");
-        File currentDir = new File("clusteringResults/"); // current directory
-        getFiles(currentDir);
-        Logger.clientListResults();
-
-    }
-
-    public static void getFiles(File dir) throws CommandException, IOException {
-        File[] files = dir.listFiles();
-        String inhalt = null;
-        //int counter = 0;
-        BufferedReader in = null;
-        try {
-            for (File file : files) {
-                if (file.isDirectory()) {
-                    //System.out.println("directory:" + file.getCanonicalPath());
-                    getFiles(file);
-                } else {
-                    System.out.println(" file:" + file.getCanonicalPath());
-                    //counter ++;
-                    in = new BufferedReader(new FileReader(file));
-                    while ((inhalt = in.readLine()) != null) {
-                        System.out.println(inhalt);
-                    }
-                }
-            }
-        } catch (CommandException | IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void removeResults(String... args) throws CommandException {
-        validateArgc(args, 1);
-        //todo resultid check
-        String id = args[0];
-        int resultID = 0;
-        if(id.contains("x")){
-            resultID = Integer.decode(id);
-        }
-        else
-            resultID = Integer.parseInt(id);
-        System.out.println("Client request is sent!");
-        String path = "clusteringResults/" + resultID;
-        File delete_file = new File(path);
-        File[] allContents = delete_file.listFiles();
-        if (allContents != null) {
-            for (File file : allContents) {
-                file.delete();
-            }
-        }
-        delete_file.delete();
-        Logger.clientRemoveResult(resultID);
-    }
-
-
-
-
-
+    // TODO: inspectCluster command
     private void inspectCluster(String... args) throws CommandException {
         validateArgc(args, 3, 4);
         //final int resultID = Integer.parseUnsignedInt(args[0]);
@@ -602,14 +594,13 @@ public final class CommandHandler {
         }
     }
 
-
     private void displayHelp(String... args) {
         System.out.println("Usage:");
         System.out.println("  ls\t- Lists all sensors and metrics.");
         System.out.println("  data <sensorId> <metric> <from-time> <to-time> [operation [interval<s|m|h|d>]]\t- Displays historic values measured by a sensor.");
         System.out.println("  linechart <sensorId> <metric> <from-time> <to-time> [operation [interval<s|m|h|d>]]\t- Creates a Linechart png with values measured by a sensor.");
         System.out.println("  scatterplot <sensorId1> <metric1> <sensorId2> <metric2> <from-time> <to-time> [operation [interval<s|m|h|d>]]\t- Creates a Scatterplot png with values measured by two sensors.");
-        //print
+        // added help command description
         System.out.println(
                 "  cluster (all | <id>[,<id>]+) <metric> <from> <to> <interval> <operation> <length> <gridHeight> <gridWidth> <updateRadius> <learningRate> <iterationPerCurve> <resultID> <amountOfIntermediateResults>");
         System.out.println("              - SOM clustering operation on the server.");
@@ -624,8 +615,6 @@ public final class CommandHandler {
         System.out.println("More information is contained in the assignment description and in the folder queries/.");
         System.out.println();
     }
-
-
 
 
     @FunctionalInterface

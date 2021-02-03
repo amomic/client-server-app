@@ -141,7 +141,7 @@ public final class ClientConnection implements AutoCloseable {
             id_directory.mkdirs();
         }
         else {
-            throw new Exception("resuldId already used");
+            throw new Exception("ResultID already used!");
         }
         for(int i = 0; i < somQueryParameters.getAmountOfIntermediateResults(); i++)
         {
@@ -164,7 +164,6 @@ public final class ClientConnection implements AutoCloseable {
         return dataSeriesCompletableFuture;
     }
 
-    // TODO: implement missing functions
     public CompletableFuture<List<Sensor>> queryResults() throws IOException, ClassNotFoundException {
         CompletableFuture<List<Sensor>> results = new CompletableFuture<>();
         outputStream.writeObject("queryResults");
@@ -173,7 +172,6 @@ public final class ClientConnection implements AutoCloseable {
         results.complete(wrapperLsObject.getSensorList());
         return results;
     }
-
 
     private void saveClusteringResultsToJsonFile(ClusteringResult result, String clusteringResultsDir) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
