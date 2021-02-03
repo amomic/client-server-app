@@ -42,7 +42,7 @@ public class ServerThread extends Thread {
                     Logger.serverRequestLS();
                     System.out.println("Server request is sent!");
 
-                    File file = new File(path);
+                    File file = new File(path + "/sensors");
                     querySensors(file);
                     outputStream.writeObject(new WrapperLsObject(sensorList));
                     outputStream.reset();
@@ -95,7 +95,7 @@ public class ServerThread extends Thread {
                     // if the sensor exists, does it offer the given metric
                     // query sensors if data not present / empty
                     if (sensorList.size() == 0) {
-                        File file = new File(path);
+                        File file = new File(path + "/sensors");
                         querySensors(file);
                     }
                     for (Integer receivedSensorId : somParameters.getSensorIds()) {
@@ -194,7 +194,7 @@ public class ServerThread extends Thread {
 
     private DataSeries queryData(DataQueryParameters parameters)
             throws IOException {
-        File dataDir = new File(path);
+        File dataDir = new File(path + "/sensors");
         List<File> sensorFiles = getSensorFiles(dataDir, parameters.getSensorId());
         Sensor sensor = getSensorFromFile(sensorFiles.get(0), parameters);
         List<DataPoint> dataPoints = new ArrayList<>();
@@ -472,7 +472,7 @@ public class ServerThread extends Thread {
         List<DataSeries> inputData = new ArrayList<>();
         List<Integer> sensorIds = new ArrayList<>();
         if (parameters.getSensorIds().get(0) == 0) {
-            File file = new File(path);
+            File file = new File(path + "/sensors");
             querySensors(file);
             for (int i = 0; i < sensorList.size(); i++) {
                 if (i % 2 == 0) {
