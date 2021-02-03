@@ -21,7 +21,7 @@ public final class ClientMain {
 					handler.handle(Arrays.copyOfRange(args, 2, args.length));
 				}
 			} catch (final IOException ex) {
-					System.err.println("Couldn't connect to server: " + url + " and port: " + port);
+				System.err.println("Couldn't connect to server: " + url + " and port: " + port);
 			}
 		} else {
 			printUsage();

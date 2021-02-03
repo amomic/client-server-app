@@ -1,9 +1,5 @@
 package at.tugraz.oop2;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -84,4 +80,6 @@ public final class Util {
         }
         return result;
     }
+
+
 }

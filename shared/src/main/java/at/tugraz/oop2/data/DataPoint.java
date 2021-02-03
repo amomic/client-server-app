@@ -1,10 +1,8 @@
 package at.tugraz.oop2.data;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.*;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -20,15 +18,26 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @EqualsAndHashCode
 @ToString
+@Getter
 public final class DataPoint implements Comparable<DataPoint>, Serializable {
 
+    @JsonProperty("time")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy hh:mm:ss")
     private final LocalDateTime time;
+
+    @JsonProperty("value")
     private final double value;
 
     @Override
     public int compareTo(DataPoint dataPoint) {
         int dateComparision = time.compareTo(dataPoint.getTime());
         return dateComparision == 0 ? Double.compare(this.getValue(), value) : dateComparision;
+    }
+
+
+    public DataPoint(DataPoint other)
+    {
+        this.time = other.getTime();
+        this.value = other.getValue();
     }
 }

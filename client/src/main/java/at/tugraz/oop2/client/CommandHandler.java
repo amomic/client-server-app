@@ -3,12 +3,14 @@ package at.tugraz.oop2.client;
 import at.tugraz.oop2.Logger;
 import at.tugraz.oop2.Util;
 import at.tugraz.oop2.data.*;
-import lombok.Data;
+import lombok.SneakyThrows;
 
 import java.awt.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Paths;
-import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -26,6 +28,7 @@ public final class CommandHandler {
     private final Map<String, Command> commands = new HashMap<>();
     private DataSeries dataSeries1;
 
+
     public CommandHandler(ClientConnection conn) {
         this.conn = conn;
         commands.put("help", this::displayHelp);
@@ -36,6 +39,9 @@ public final class CommandHandler {
         // added command
         commands.put("cluster", this::queryCluster);
         commands.put("plotcluster", this::queryPlotCluster);
+        commands.put("listresults", this::listResults);
+        commands.put("rm", this::removeResults);
+        commands.put("inspectcluster", this::inspectCluster);
 
     }
 
@@ -266,7 +272,6 @@ public final class CommandHandler {
         return first_normal*0.90;
     }
 
-
     private void queryScatterplot(String... args) throws Exception {
         validateArgc(args, 7, 9);
         final int sensorId1 = Integer.parseUnsignedInt(args[0]);
@@ -377,11 +382,8 @@ public final class CommandHandler {
 
     // TODO: 2nd assignment implementation
 
-    // TODO: check this with tutor
-
     private void queryCluster(String... args) throws Exception {
         validateArgc(args, 14, 15);
-        // FIXED
         final String sensorIds = args[0];
         List<Integer> intList = new ArrayList<Integer>();
         if(sensorIds.equals("all"))
@@ -404,129 +406,204 @@ public final class CommandHandler {
         final int iterations =  Integer.parseUnsignedInt(args[11]);
         final int resultId = Integer.decode(args[12]);
         final int inter_results =  Integer.parseUnsignedInt(args[13]);
-
+        List<ClusterDescriptor> series = null;
 
         final SOMQueryParameters somQueryParameters = new SOMQueryParameters(intList, type, from, to, operation, interval, length,grid_length,grid_width,radius,rate,
                 iterations, resultId,inter_results);
         Logger.clientRequestCluster(somQueryParameters);
-        System.out.println("Client request is sent!");
-        double from_epoch = from.toEpochSecond(ZoneOffset.UTC);
-        double to_epoch = to.toEpochSecond(ZoneOffset.UTC);
 
-        // TODO: check if this is meant by divisor
-        if(((to_epoch - from_epoch) / length) % length != 0)
-        {
-            Logger.err("Length not divisor of (<to> - <from>)/<length>");
+        long diff = Duration.between(somQueryParameters.getFrom(), somQueryParameters.getTo()).toSeconds();
+        long numberOfIntervals = diff / somQueryParameters.getInterval();
+        if (numberOfIntervals % somQueryParameters.getLength() != 0) {
+            System.out.println("Exception will be thrown! Length value is not valid!");
+            throw new Exception("Cannot divide into arrays of the same length");
         }
-        final List<ClusterDescriptor> dataSeries = conn.queryCluster(somQueryParameters).get();
+        try{
+            series = conn.queryCluster(somQueryParameters).get();
+        }catch(Exception e)
+        { //todo exception
+
+            // Logger.err(e.toString());
+            System.out.println("Error: " + e.getMessage());
+            return;
+        }
 
 
+        if(numberOfIntervals % somQueryParameters.getLength() == 0)
+        {
+            System.out.println("Client request is sent!");
+            System.out.println("Client response:");
+            System.out.println("          sensors:       " + sensorIds);
+            System.out.println("          type:          " + type);
+            System.out.println("          from:          " + from + " until " + to);
 
-        //todo dd
-        // all oder bestimmte id sensor + metric + to from +interval +operation +lenght (dass wird von unseren kurven bestimmt )+eine höhe +eine breite +
-        // radius+learningsrate (halften von radius)+iteration per curves
+            System.out.println("          packing:       " + length + " DataPoints using " + operation + " with a sampling size of " + interval + " seconds");
+            System.out.println("          SOM-Params;    " + "(" + grid_length + ", " + grid_width + ")" + " - Grid with a learning rate of " + rate + " and an initial update Radius of " + radius+ " times the diameter of the grid for " + iterations + " iterations per curve.");
+            System.out.println("          ResultID:      " + resultId + " will contain " + inter_results + " intermediate results.");
 
-        //final List<ClusterDescriptor> clusters = conn.queryCluster(new Sensor(sensorId || intList, type) ,from, to, interval, length, grid_length,grid_width,radius,rate,
-        //     iterations).get();
-        //if(clusters.size() == 0) {
-        //   Logger.err("Two or more missing cluster points. No response from the server.");
-        //   System.out.println("Two or more missing cluster points. No response from the server.");
-        // }
+            System.out.println("Check results in json file!");
 
-
-
+        }
     }
 
-    // FIXME: return results are not good, should return something else
-    private void listResults(String... args) throws Exception {
-        validateArgc(args, 0);
-        Logger.clientListResults();
-        System.out.println("Client request is sent!");
-
-        final List<Sensor> results = conn.queryResults().get();
-        System.out.println("Client action: clustering");
-        results.forEach(result -> {
-            String line = String.format("|  %20s |  %20s |  %20s |  %20s |  %20s |  %20s |", String.valueOf(result.getId()),
-                    result.getType(), result.getLocation(), String.valueOf(result.getLatitude()), //get right values grids,width
-                    String.valueOf(result.getLongitude()), result.getMetric());
-            System.out.println(line);
-        });
-
-    }
-
-    private void removeResults(String... args) throws Exception {
-        validateArgc(args, 1);
-        final int resultId = Integer.parseUnsignedInt(args[0]);
-        Logger.clientRemoveResult(resultId);
-        System.out.println("Client request is sent!");
-    }
-
-    // TODO: what is meant by weights
-    private void inspectCluster(String... args) throws Exception {
-        validateArgc(args, 4, 5);
-        final int resultId = Integer.parseUnsignedInt(args[0]);
-        final int heigthIdx =  Integer.parseUnsignedInt(args[1]);
-        final int widthIdx =  Integer.parseUnsignedInt(args[2]);
-        String boolVerbose = args[3];
-        final List<Double>  weights;
-
-        //final ClusterDescriptor cD = new ClusterDescriptor(heigthIdx,widthIdx,weights);
-
-        //Logger.clientInspectCluster(resultId,heigthIdx,widthIdx,cD);
-
-        /*StringBuilder content = new StringBuilder();
-
-        //UNCLEAR BOOLEAN VAR: IF FALSE SHOULD WE PRINT ANYTHING AT ALL (if statement easily to be added if so) and rest is
-        //commented not to get error because of weight
-        content.append("| ----------------------------------- |");
-        content.append(getNewline());
-        content.append("| #Members    | " + String.format("%6d (%1.3f)", cD.getMembers().size(), cD.getNormalizedAmountOfMembers()));
-        content.append(getNewline());
-        content.append("| ----------------------------------- |");
-        content.append(getNewline());
-        content.append("| #Error      | " + String.format("%5.3f (%1.3f)", cD.getError(), cD.getNormalizedError()));
-        content.append(getNewline());
-        content.append("| ----------------------------------- |");
-        content.append(getNewline());
-        content.append("| #Entropy    | " + String.format("%5.3f (%1.3f)", cD.getDistanceEntropy(), cD.getNormalizedDistanceEntropy()));
-        content.append(getNewline());
-        content.append("| ----------------------------------- |");*/
 
 
-    }
-    private void queryPlotCluster(String... args) throws Exception{
+    // TODO: plotcluster
+    private List<Integer> queryPlotCluster(String... args) throws Exception{
         final int resultId = Integer.parseUnsignedInt(args[0]);
         final int clusterPlotHeight = Integer.parseInt(args[1]);
         final int clusterPlotWidth = Integer.parseInt(args[2]);
         final boolean boolPlotClusterMembers = Boolean.parseBoolean(args[3]);
         final String heatMapOperation = args[4].toUpperCase();
-        //final ClusterPlots.HeatmapOperation heatmapOperation = ClusterPlots.HeatmapOperation.valueOf(heatMapOperation);
         final boolean boolPlotAllFrames = Boolean.parseBoolean(args[5]);
-
         if (clusterPlotHeight <= 0 || clusterPlotWidth <= 0)
             Logger.err("Width and Height have to be positive.");
         System.out.println("Width and Height have to be positive.");
-        Logger.clientPlotCluster(resultId, boolPlotClusterMembers, heatMapOperation, boolPlotAllFrames);
         final String cluster = Integer.toString(resultId);
-        if(cluster == String.valueOf(0)) {
+        System.out.println("Client request is sent!");
+        Logger.clientPlotCluster(resultId, boolPlotClusterMembers, heatMapOperation, boolPlotAllFrames);
+        if (cluster == String.valueOf(0)) {
             Logger.err("Two or more missing cluster points. No response from the server.");
             System.out.println("Two or more missing cluster points. No response from the server.");
         }
-        //todo
-       // packet vorbereiten für ausdrücken  im server
-        //oder cluster handler
         final List<Sensor> results = conn.queryResults().get();
+        getFiles((File) results);
         final List<Integer> files = Collections.synchronizedList(new ArrayList<>());
-        results.forEach
-                ((final Sensor p) -> {
-            if (!boolPlotAllFrames )
-                System.out.println("Warning: Latest intermediate result found is not the finished result.");
+        try {
+
+            results.forEach((final Sensor p) -> {
+                if (!boolPlotAllFrames )
+                    System.out.println("Warning: Latest intermediate result found is not the finished result.");
             });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        System.out.println(String.format("Wrote %d files", files.size()));
+        if (!boolPlotAllFrames)
+            return files;
+        Optional<String> frames = files.parallelStream().sorted()
+                .map((final Integer p) -> String.format("file 'iter_%d_clusterplot.json'", p))
+                .reduce((final String prev, final String next) -> String.format("%s%n%s", prev, next));
+        return files;
+    }
+
+    // TODO: listresults
+    @SneakyThrows
+    private void listResults(String... args) throws CommandException {
+        validateArgc(args, 0, 1);
+        System.out.println("Client action: listing");
+        File currentDir = new File("clusteringResults/"); // current directory
+        getFiles(currentDir);
+        Logger.clientListResults();
+
+    }
+
+    public static void getFiles(File dir) throws CommandException, IOException {
+        File[] files = dir.listFiles();
+        String inhalt = null;
+        //int counter = 0;
+        BufferedReader in = null;
+        try {
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    //System.out.println("directory:" + file.getCanonicalPath());
+                    getFiles(file);
+                } else {
+                    System.out.println(" file:" + file.getCanonicalPath());
+                    //counter ++;
+                    in = new BufferedReader(new FileReader(file));
+                    while ((inhalt = in.readLine()) != null) {
+                        System.out.println(inhalt);
+                    }
+                }
+            }
+        } catch (CommandException | IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void removeResults(String... args) throws CommandException {
+        validateArgc(args, 1);
+        //todo resultid check
+        String id = args[0];
+        int resultID = 0;
+        if(id.contains("x")){
+            resultID = Integer.decode(id);
+        }
+        else
+            resultID = Integer.parseInt(id);
+        System.out.println("Client request is sent!");
+        String path = "clusteringResults/" + resultID;
+        File delete_file = new File(path);
+        File[] allContents = delete_file.listFiles();
+        if (allContents != null) {
+            for (File file : allContents) {
+                file.delete();
+            }
+        }
+        delete_file.delete();
+        Logger.clientRemoveResult(resultID);
     }
 
 
 
-        private void displayHelp(String... args) {
+
+
+    private void inspectCluster(String... args) throws CommandException {
+        validateArgc(args, 3, 4);
+        //final int resultID = Integer.parseUnsignedInt(args[0]);
+        final int heightIndex = Integer.parseUnsignedInt(args[1]);
+        final int widthIndex = Integer.parseUnsignedInt(args[2]);
+
+        String id1 = args[0];
+        int resultID1 = 0;
+        if(id1.contains("x")){
+            resultID1 = Integer.decode(id1);
+        }
+        else
+            resultID1 = Integer.parseInt(id1);
+
+        final boolean boolVerbose = args.length >= 4 && Boolean.parseBoolean(args[3]); // default false
+        try {
+            File cluster = new File("clusteringResults/");
+            final File[] files = cluster.listFiles();
+            if (files == null)
+                throw new CommandException("Not a directory");
+
+            final String line1 = "\t+------------------------------------------------+";
+            final String line2= "\t+------------------+-----------------------------+";
+            final String separeting3 = "\t+------------+------------+----------------------+";
+            final String ln1 = "\t| %-46s |";
+            final String l2f = "\t| %-16s | %27.5f |";
+            final String ln3 = "\t| %-10s | %-10s | %20s |";
+
+
+            System.out.println(line1);
+            System.out.println(
+                    String.format(ln1, String.format("Node (%d, %d) from %x", heightIndex, widthIndex, resultID1)));
+            System.out.println(line2);
+            System.out.println(String.format(l2f, String.format("#Members"), 0.0));
+            System.out.println(line2);
+            System.out.println(String.format(l2f, String.format("#Error"), -1.0));
+            System.out.println(line2);
+            System.out.println(String.format(l2f, String.format("#Entropy"), -1.0));
+            System.out.println(line2);
+
+            if (boolVerbose == true)
+            {
+                System.out.println(String.format(ln1, String.format("List of all members:")));
+                System.out.println(separeting3);
+                System.out.println(String.format(ln3, String.format("from"), String.format("to"), String.format("sensor")));
+            }
+
+        } catch (final NullPointerException ex) {
+            Logger.warn(String.format("Exception inspecting: %s", ex.getMessage()));
+            throw new CommandException("Could not  found inspect cluster");
+        }
+    }
+
+
+    private void displayHelp(String... args) {
         System.out.println("Usage:");
         System.out.println("  ls\t- Lists all sensors and metrics.");
         System.out.println("  data <sensorId> <metric> <from-time> <to-time> [operation [interval<s|m|h|d>]]\t- Displays historic values measured by a sensor.");
@@ -548,12 +625,15 @@ public final class CommandHandler {
         System.out.println();
     }
 
+
+
+
     @FunctionalInterface
     private interface Command {
         void handle(String... args) throws Exception;
     }
 
-    private static final class CommandException extends Exception {
+    static final class CommandException extends Exception {
         public CommandException(String message) {
             super(message);
         }

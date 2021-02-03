@@ -2,7 +2,14 @@ package at.tugraz.oop2.client;
 
 import at.tugraz.oop2.Logger;
 import at.tugraz.oop2.data.*;
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -114,29 +121,87 @@ public final class ClientConnection implements AutoCloseable {
         return pictureCompletableFuture;
     }
 
-    //TODO: implemet missing functions
+    //TODO: implemetation of the 2nd assignment
 
-    // same as data command
-    public CompletableFuture<List<ClusterDescriptor>> queryCluster(SOMQueryParameters somQueryParameters) throws IOException, ClassNotFoundException {
+    public CompletableFuture<List<ClusterDescriptor>> queryCluster(SOMQueryParameters somQueryParameters) throws IOException, ClassNotFoundException, Exception {
         CompletableFuture<List<ClusterDescriptor>> dataSeriesCompletableFuture = new CompletableFuture<>();
         System.out.println(somQueryParameters);
+        ClusteringResult clusteringResult = null;
+        List<ClusterDescriptor> finalClusterinResult = null;
         outputStream.writeObject(somQueryParameters);
-        List<ClusterDescriptor> clusters = (List<ClusterDescriptor>) inputStream.readObject();
-        outputStream.reset();
-        dataSeriesCompletableFuture.complete(clusters);
+        String saveDirPath = "clusteringResults/";
+        String saveDirId= "clusteringResults/"+ String.valueOf(somQueryParameters.getResultId()) ;
+
+        File directory = new File(saveDirPath);
+        if (! directory.exists()) {
+            directory.mkdirs();
+        }
+        File id_directory = new File(saveDirId);
+        if (! id_directory.exists()) {
+            id_directory.mkdirs();
+        }
+        else {
+            throw new Exception("resuldId already used");
+        }
+        for(int i = 0; i < somQueryParameters.getAmountOfIntermediateResults(); i++)
+        {
+            clusteringResult = (ClusteringResult) inputStream.readObject();
+            if(clusteringResult == null)
+            {
+                List<String>  errors = (List<String>) inputStream.readObject();
+                String error_msg = "";
+                for (String error: errors) {
+                    error_msg += error + "\n";
+                }
+                outputStream.reset();
+                throw new Exception(error_msg);
+            }
+            String saveJsonDir = saveDirPath + File.separator + String.valueOf(somQueryParameters.getResultId());
+            saveClusteringResultsToJsonFile(clusteringResult, saveJsonDir);
+            outputStream.reset();
+        }
+        dataSeriesCompletableFuture.complete(clusteringResult.getFinalClusters());
         return dataSeriesCompletableFuture;
     }
 
-    // same as ls
+    // TODO: implement missing functions
     public CompletableFuture<List<Sensor>> queryResults() throws IOException, ClassNotFoundException {
         CompletableFuture<List<Sensor>> results = new CompletableFuture<>();
-
         outputStream.writeObject("queryResults");
-
         WrapperLsObject wrapperLsObject = (WrapperLsObject) inputStream.readObject();
         outputStream.reset();
         results.complete(wrapperLsObject.getSensorList());
         return results;
+    }
+
+
+    private void saveClusteringResultsToJsonFile(ClusteringResult result, String clusteringResultsDir) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        SimpleModule dataSeriesModule = new SimpleModule();
+        dataSeriesModule.addSerializer(DataSeries.class, new DataSeriesJsonSerializer());
+        mapper.registerModule(dataSeriesModule);
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        ObjectWriter writer = mapper.writer(new DefaultPrettyPrinter());
+
+        // if directory doesn't exist create it
+        File directory = new File(clusteringResultsDir);
+        if (! directory.exists()){
+            directory.mkdirs();
+        }
+
+        // save training results first
+        for (Map.Entry<Integer, List<ClusterDescriptor>> entry: result.getTrainingProgressClusters().entrySet())
+        {
+            File jsonFile = new File(clusteringResultsDir + File.separator + entry.getKey().toString() + ".json");
+            jsonFile.createNewFile();
+            writer.writeValue(jsonFile, entry.getValue());
+        }
+
+        // save final result
+        File jsonFile = new File(clusteringResultsDir + File.separator + "final.json");
+        jsonFile.createNewFile();
+        writer.writeValue(jsonFile, result.getFinalClusters());
     }
 
     @FunctionalInterface

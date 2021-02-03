@@ -4,10 +4,7 @@ import at.tugraz.oop2.Util;
 import at.tugraz.oop2.data.ClusterDescriptor;
 import at.tugraz.oop2.data.DataSeries;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 
@@ -21,6 +18,7 @@ public final class SOMHandler {
     private int iteration;
     private double learningRate;
     private double updateRadius;
+    private double gridDiameter;
 
     private int intermediatePlots;
 
@@ -32,6 +30,9 @@ public final class SOMHandler {
 
     private double[][][] weights;
     private ClusterDescriptor[][] clusters;
+
+    private Map<Integer, ClusterDescriptor[][]> progress;
+
 
     public SOMHandler(List<DataSeries> data, int height, int width,
                       double learningRate, double updateRadius, int maxIterationCount,
@@ -47,66 +48,33 @@ public final class SOMHandler {
         this.iteration = 0;
         this.maxIterationCount = maxIterationCount;
         this.intermediatePlots = intermediatePlots;
-
         this.length = data.get(0).size();
         this.weights = new double[this.height][this.width][this.length];
 
-        this.updateRadiusDecayRate = 0.1;
-        this.learningRateDecayRate = 0.1;
+        this.updateRadiusDecayRate = updateRadius / maxIterationCount;
+        this.learningRateDecayRate = learningRate / maxIterationCount;
+        this.gridDiameter = Math.sqrt(Math.pow(height - 1, 2) + Math.pow(width - 1, 2));
 
         this.currentLearningRate = learningRate;
-        this.currentUpdateRadius = learningRate;
+        this.currentUpdateRadius = updateRadius;
 
+        this.progress = new HashMap<>();
     }
 
 
     public SOMHandler(List<DataSeries> data, int height, int width, int length,
                       double learningRate, double updateRadius, int maxIterationCount,
-                      int intermediatePlots, double updateRadiusDecayRate, double learningRateDecayRate) {
+                      int intermediatePlots) {
         this(data, height, width, learningRate, updateRadius, maxIterationCount, intermediatePlots);
         this.length = length;
-        this.updateRadiusDecayRate = updateRadiusDecayRate;
-        this.learningRateDecayRate = learningRateDecayRate;
     }
 
 
-    public void run()
-    {
+    public void run() {
         this.initWeights();
         this.train();
-        this.initClusters();
-        this.clusterMembers();
-    }
-
-
-    private void initClusters() {
-        this.clusters = new ClusterDescriptor[this.height][this.width];
-        for (int i = 0; i < this.height; i++) {
-            for (int j = 0; j < this.width; j++) {
-                List<Double> weights = DoubleStream.of(this.weights[i][j]).boxed().collect(Collectors.toList());
-                this.clusters[i][j] = new ClusterDescriptor(i, j, weights);
-            }
-        }
-    }
-
-
-    private void clusterMembers()
-    {
-        for (DataSeries sample : this.data)
-        {
-            int[] clusterPos = this.findBestMatchingNeuron(sample);
-            this.clusters[clusterPos[0]][clusterPos[1]].addMember(sample);
-        }
-    }
-
-
-    public List<ClusterDescriptor> getClusters()
-    {
-        List<ClusterDescriptor> clusters = new ArrayList<>();
-        for (int i = 0; i < this.height; i++) {
-            clusters.addAll(Arrays.asList(this.clusters[i]));
-        }
-        return clusters;
+        this.clusters = this.initClusters(true);
+        this.clusterMembers(this.clusters);
     }
 
 
@@ -122,15 +90,13 @@ public final class SOMHandler {
     }
 
 
-    private void train()
-    {
-        for (int t = 0; t < this.maxIterationCount; t++)
-        {
+    private void train() {
+        for (int t = 0; t < this.maxIterationCount; t++) {
             // adjust update radius and learning rate for each step
             // decay function is time decay: meaning the radius and learning rate will be X% less with every iteration
             this.iteration = t;
-            this.currentUpdateRadius *= 1 / (1 + this.updateRadiusDecayRate * this.iteration);
-            this.currentLearningRate *= 1 / (1 + this.learningRateDecayRate * this.iteration);
+            this.currentUpdateRadius = this.updateRadius * 1 / (1 + this.updateRadiusDecayRate * this.iteration);
+            this.currentLearningRate = this.learningRate * 1 / (1 + this.learningRateDecayRate * this.iteration);
 
             for (DataSeries sample : this.data) {
 
@@ -141,14 +107,18 @@ public final class SOMHandler {
                 boolean[][] mask = this.getNeighbourhoodInfluenceMask(winnerPos);
 
                 // update weights
-                this.updateWeights(winnerPos, mask, sample.getValues());
+                this.updateWeights(mask, sample.getValues());
+            }
+
+            // record progress every Nth step so we have this.intermediatePlots number of records
+            if (this.iteration % (this.maxIterationCount / this.intermediatePlots) == 0) {
+                this.recordProgress(t);
             }
         }
     }
 
 
-    private int[] findBestMatchingNeuron(DataSeries input)
-    {
+    private int[] findBestMatchingNeuron(DataSeries input) {
         int[] bestPos = {0, 0};
         double bestDistance = Double.POSITIVE_INFINITY;
         for (int i = 0; i < this.height; i++) {
@@ -165,7 +135,25 @@ public final class SOMHandler {
     }
 
 
-    private void updateWeights(int[] winnerPos, boolean[][] mask, double[] input) {
+    private boolean[][] getNeighbourhoodInfluenceMask(int[] winnerPos) {
+        boolean[][] mask = new boolean[this.height][this.width];
+        for (int i = 0; i < this.height; i++) {
+            for (int j = 0; j < this.width; j++) {
+                int[] potentialNeighbourPos = {i, j};
+                if (potentialNeighbourPos == winnerPos) {
+                    mask[i][j] = true;
+                } else {
+                    double distance = DistanceMetrics.euclidean(winnerPos, potentialNeighbourPos);
+                    double updateDistance = this.gridDiameter * this.currentUpdateRadius;
+                    mask[i][j] = distance <= updateDistance;
+                }
+            }
+        }
+        return mask;
+    }
+
+
+    private void updateWeights(boolean[][] mask, double[] input) {
 
         for (int i = 0; i < this.height; i++) {
             for (int j = 0; j < this.width; j++) {
@@ -175,37 +163,67 @@ public final class SOMHandler {
                     continue;
                 }
 
-                // find distance between neighbouring neuron and winner neuron
-                int[] neighbourPos = {i, j};
-                double distance = DistanceMetrics.euclidean(winnerPos, neighbourPos);
-
                 //  subtract vectors: diff = || xi(t) - mi(t) ||
                 double[] diff = Util.subtractVectors(input, this.weights[i][j]);
 
                 // update neuron for the next iteration: mi(t+1) = mi(t) + hci(t) * diff
-                for (int p = 0; p < this.length; p++)
-                {
+                for (int p = 0; p < this.length; p++) {
                     this.weights[i][j][p] +=
-                            NeighbourhoodKernels.gaussian(this.currentLearningRate, distance, this.currentUpdateRadius)
-                            * diff[p];
+                            NeighbourhoodKernels.bubble(this.currentLearningRate)
+                                    * diff[p];
                 }
             }
         }
     }
 
 
-    private boolean[][] getNeighbourhoodInfluenceMask(int[] winnerPos)
-    {
-        boolean[][] mask = new boolean[this.height][this.width];
-        for (int i = 0; i < this.height; i++) {
-            for (int j = 0; j < this.width; j++) {
-                int[] potentialNeighbourPos = {i, j};
-                double distance = DistanceMetrics.euclidean(winnerPos, potentialNeighbourPos);
-                mask[i][j] = distance < this.currentUpdateRadius;
-            }
-        }
-        return mask;
+    private void recordProgress(int iteration) {
+        ClusterDescriptor[][] clusters = this.initClusters(false);
+        this.clusterMembers(clusters);
+        this.progress.put(iteration, clusters);
     }
 
+
+    private ClusterDescriptor[][] initClusters(boolean finished) {
+        ClusterDescriptor[][] clusters = new ClusterDescriptor[this.height][this.width];
+        for (int i = 0; i < this.height; i++) {
+            for (int j = 0; j < this.width; j++) {
+                List<Double> weights = DoubleStream.of(this.weights[i][j]).boxed().collect(Collectors.toList());
+                clusters[i][j] = new ClusterDescriptor(i, j, weights);
+                clusters[i][j].setFinished(finished);
+            }
+        }
+        return clusters;
+    }
+
+
+    private void clusterMembers(ClusterDescriptor[][] clusters) {
+        for (DataSeries sample : this.data) {
+            int[] clusterPos = this.findBestMatchingNeuron(sample);
+            clusters[clusterPos[0]][clusterPos[1]].addMember(sample);
+        }
+    }
+
+
+    public List<ClusterDescriptor> getClusters() {
+        List<ClusterDescriptor> clusters = new ArrayList<>();
+        for (int i = 0; i < this.height; i++) {
+            clusters.addAll(Arrays.asList(this.clusters[i]));
+        }
+        return clusters;
+    }
+
+
+    public Map<Integer, List<ClusterDescriptor>> getTrainingProgressClusters() {
+        Map<Integer, List<ClusterDescriptor>> progress = new HashMap<>();
+        for (Map.Entry<Integer, ClusterDescriptor[][]> entry : this.progress.entrySet()) {
+            List<ClusterDescriptor> clusters = new ArrayList<>();
+            for (int i = 0; i < this.height; i++) {
+                clusters.addAll(Arrays.asList(entry.getValue()[i]));
+            }
+            progress.put(entry.getKey(), clusters);
+        }
+        return progress;
+    }
 
 }

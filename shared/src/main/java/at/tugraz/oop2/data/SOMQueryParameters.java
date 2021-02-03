@@ -31,4 +31,12 @@ public class SOMQueryParameters implements Serializable {
 
     private final int resultId;
     private final int amountOfIntermediateResults;
+
+    public List<Integer> getSensorIds() {
+        return sensorIds;
+    }
+
+    public String getMetric() {
+        return metric;
+    }
 }

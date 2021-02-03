@@ -1,5 +1,6 @@
 package at.tugraz.oop2.data;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -20,13 +21,36 @@ import java.io.Serializable;
 @ToString
 public final class Sensor implements Serializable {
 
+    @JsonProperty("id")
     private final int id;
+
+    @JsonProperty("type")
     private final String type;
-    private final double latitude, longitude;
-    private final String location, metric;
+
+    @JsonProperty("latitude")
+    private final double latitude;
+
+    @JsonProperty("longitude")
+    private final double longitude;
+
+    @JsonProperty("location")
+    private final String location;
+
+    @JsonProperty("metric")
+    private final String metric;
+
 
     public String prettyString() {
         return String.format("%s - %s", getLocation(), getMetric());
     }
+
+    public int getId() {
+        return id;
+    }
+
+    public String getMetric() {
+        return metric;
+    }
+
 
 }

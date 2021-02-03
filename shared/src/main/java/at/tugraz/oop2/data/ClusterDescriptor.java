@@ -2,12 +2,10 @@ package at.tugraz.oop2.data;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
 
 import java.io.Serializable;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 
 /**
@@ -19,9 +17,10 @@ import java.util.ArrayList;
 public final class ClusterDescriptor implements Serializable {
     private final int heigthIndex;
     private final int widthIndex;
-
     private final List<Double> weights;
     private final List<DataSeries> members;
+    final double updateRadius = 0;
+    boolean finished = false;
 
     private Double error = -1.d;
     private Double normalizedError = -1.d;
@@ -36,15 +35,13 @@ public final class ClusterDescriptor implements Serializable {
         this.members = new ArrayList<>();
     }
 
-    public ClusterDescriptor(int heigthIndex, int widthIndex, List<Double> weights, List<DataSeries> members) {
-        this.heigthIndex = heigthIndex;
-        this.widthIndex = widthIndex;
-        this.weights = weights;
-        this.members = members;
-    }
-
 
     public void addMember(DataSeries member) {
         this.members.add(member);
+    }
+
+
+    public void setFinished(boolean finished) {
+        this.finished = finished;
     }
 }

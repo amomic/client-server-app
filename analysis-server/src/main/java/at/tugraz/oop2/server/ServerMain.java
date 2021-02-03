@@ -9,7 +9,6 @@ public final class ServerMain {
 
 	public static void main(String... args) {
 		CommandLine cmd = validateArgs(args);
-		System.out.println(cmd);
 		if (cmd != null) {
 			final int serverPort = Integer.parseUnsignedInt(cmd.getOptionValue("port"));
 			String data_path = cmd.getOptionValue("data", "data/sensors");
@@ -34,6 +33,6 @@ public final class ServerMain {
 			System.out.println(e.getMessage());
 			formatter.printHelp("server parameters", options);
 			return null;
-			}
+		}
 	}
 }
