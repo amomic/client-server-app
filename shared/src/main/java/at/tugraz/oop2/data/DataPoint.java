@@ -1,5 +1,6 @@
 package at.tugraz.oop2.data;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -20,6 +21,8 @@ import java.time.LocalDateTime;
 @EqualsAndHashCode
 @ToString
 public final class DataPoint implements Comparable<DataPoint>, Serializable {
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy hh:mm:ss")
     private final LocalDateTime time;
     private final double value;
 

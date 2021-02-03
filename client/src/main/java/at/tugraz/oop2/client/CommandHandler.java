@@ -418,7 +418,7 @@ public final class CommandHandler {
         {
             Logger.err("Length not divisor of (<to> - <from>)/<length>");
         }
-        final ClusterDescriptor dataSeries = conn.queryCluster(somQueryParameters).get();
+        final List<ClusterDescriptor> dataSeries = conn.queryCluster(somQueryParameters).get();
 
 
 

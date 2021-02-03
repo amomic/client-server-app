@@ -2,6 +2,8 @@ package at.tugraz.oop2.data;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.io.Serializable;
 import java.util.List;
@@ -39,5 +41,10 @@ public final class ClusterDescriptor implements Serializable {
         this.widthIndex = widthIndex;
         this.weights = weights;
         this.members = members;
+    }
+
+
+    public void addMember(DataSeries member) {
+        this.members.add(member);
     }
 }

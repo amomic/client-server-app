@@ -117,14 +117,13 @@ public final class ClientConnection implements AutoCloseable {
     //TODO: implemet missing functions
 
     // same as data command
-    public CompletableFuture<ClusterDescriptor> queryCluster(SOMQueryParameters somQueryParameters) throws IOException, ClassNotFoundException {
-        CompletableFuture<ClusterDescriptor> dataSeriesCompletableFuture = new CompletableFuture<>();
+    public CompletableFuture<List<ClusterDescriptor>> queryCluster(SOMQueryParameters somQueryParameters) throws IOException, ClassNotFoundException {
+        CompletableFuture<List<ClusterDescriptor>> dataSeriesCompletableFuture = new CompletableFuture<>();
         System.out.println(somQueryParameters);
         outputStream.writeObject(somQueryParameters);
-
-        ClusterDescriptor dataSeries = (ClusterDescriptor) inputStream.readObject();
+        List<ClusterDescriptor> clusters = (List<ClusterDescriptor>) inputStream.readObject();
         outputStream.reset();
-        dataSeriesCompletableFuture.complete(dataSeries);
+        dataSeriesCompletableFuture.complete(clusters);
         return dataSeriesCompletableFuture;
     }
 

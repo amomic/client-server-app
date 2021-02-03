@@ -3,15 +3,24 @@ package at.tugraz.oop2.server;
 import at.tugraz.oop2.Logger;
 import at.tugraz.oop2.Util;
 import at.tugraz.oop2.data.*;
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+import javax.xml.crypto.Data;
 import java.io.*;
 import java.net.Socket;
+import java.net.URISyntaxException;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class ServerThread extends Thread {
     Socket socket;
@@ -91,14 +100,22 @@ public class ServerThread extends Thread {
                             System.out.println("Two or more missing DataPoints existing after performing operation for requested interval");
                         }
                     } else if (msg instanceof SOMQueryParameters) {
-                        // TODO: print result on server side same as for data command after implementing clustering command
-                        SOMQueryParameters SomParameters = (SOMQueryParameters) msg;
-                        System.out.println("Server request is sent!");
+                        SOMQueryParameters somParameters = (SOMQueryParameters) msg;
+                                                System.out.println("Server request is sent!");
 
-                        ClusterDescriptor dataSeriesSom = queryCluster(SomParameters);
+                        try {
+                            this.checkIfPartionable(somParameters);
+                            List<ClusterDescriptor> dataSeriesSom = queryCluster(somParameters);
+                            outputStream.writeObject(dataSeriesSom);
+                            outputStream.reset();
+                        } catch (IllegalArgumentException e) {
+                            Logger.info("Cannot divide input into multiple arrays of the given length");
+                            System.err.println("Clustering not performed.");
+                        } catch (URISyntaxException e) {
+                            Logger.info("Cannot save clustering data on the path");
+                            System.err.println("Clustering results not saved.");
+                        }
 
-                        outputStream.writeObject(dataSeriesSom);
-                        outputStream.reset();
 
                     }
 
@@ -113,7 +130,7 @@ public class ServerThread extends Thread {
     }
 
     private DataSeries queryData(DataQueryParameters parameters) throws IOException {
-        File file = new File(path + "/sensors");
+        File file = new File(path);
 
         // this will be overwritten by getData() so we use random values to avouid null warning
         Sensor sensor = new Sensor(parameters.getSensorId(), "", 2d,3d,"", parameters.getMetric());
@@ -773,15 +790,84 @@ public class ServerThread extends Thread {
     //        write the SOM algorithm and do necessary calculations with the help of data mentioned above
     //        try setting weights to value between 0 and 1 and increase or decrease them with every iteration to get as near as possible to entered input
     //        return value
-    private ClusterDescriptor queryCluster(SOMQueryParameters parameters) throws IOException {
-        // TODO: write the function
-        File file = new File(path + "/sensors");
-
-        System.out.println(file + "Stasa");
-
-        List<Double> listica = null;
-        ClusterDescriptor series = new ClusterDescriptor(1,1, listica );
-
-        return series;
+    private List<ClusterDescriptor> queryCluster(SOMQueryParameters parameters) throws IOException, URISyntaxException {
+        List<DataSeries> inputData = this.getCurves(parameters);
+        // Ovo vam je stepen kojim cete smanjivati okolinu i learning rate, mozda biste mogli da ove podatke negde
+        // izvucete...
+        double learningRateDecay = 0.05;
+        double updateRadiusDecay = 0.05;
+        SOMHandler somHandler = new SOMHandler(
+                inputData, parameters.getGridHeight(), parameters.getGridWidth(), parameters.getLength(),
+                parameters.getLearningRate(), parameters.getUpdateRadius(), (int) parameters.getIterationsPerCurve(),
+                parameters.getAmountOfIntermediateResults(), updateRadiusDecay, learningRateDecay);
+        somHandler.run();
+        List<ClusterDescriptor> clusters = somHandler.getClusters();
+        this.saveToJson(clusters, String.valueOf(parameters.getResultId()));
+        return clusters;
     }
+
+
+    private List<DataSeries> getCurves(SOMQueryParameters parameters) throws IOException {
+        List<DataSeries> inputData = new ArrayList<>();
+
+        for (int sensorId : parameters.getSensorIds()) {
+            // for each sensorId query data to get DataSeries
+            DataQueryParameters queryParameters = new DataQueryParameters(sensorId, parameters.getMetric(),
+                    parameters.getFrom(), parameters.getTo(), parameters.getOperation(), parameters.getInterval());
+
+            // query data
+            DataSeries queryResult = queryData(queryParameters);
+
+            // add partitions
+            inputData.addAll(this.partitionDataSeries(queryResult, parameters.getLength()));
+        }
+
+        return inputData;
+    }
+
+    private List<DataSeries> partitionDataSeries(DataSeries dataSeries, int batchSize)
+    {
+        List<DataSeries> partitioned = new ArrayList<>();
+        List<List<DataPoint>> partitions = Util.partitionList(new ArrayList<>(dataSeries), batchSize);
+
+        for (List<DataPoint> points : partitions) {
+            DataSeries partition = new DataSeries(dataSeries.getSensor(), dataSeries.getInterval(),
+                    dataSeries.getOperation());
+            partition.addAll(points);
+            partitioned.add(partition);
+        }
+
+        return partitioned;
+    }
+
+
+    public void checkIfPartionable(SOMQueryParameters parameters) throws IllegalArgumentException {
+        long diff = Duration.between(parameters.getFrom(), parameters.getTo()).toSeconds();
+        long numberOfIntervals = diff / parameters.getInterval();
+        if (numberOfIntervals % parameters.getLength() != 0) {
+            throw  new IllegalArgumentException("Cannot divide into arrays of the same lenght");
+        }
+    }
+
+
+    private void saveToJson(List<ClusterDescriptor> clusters, String resultID) throws IOException {
+        String rootPath = System.getProperty("user.dir");
+        String saveDirPath = rootPath + File.separator + "clusteringResults";
+        String saveJsonPath = saveDirPath + File.separator + resultID + ".json";
+
+        File directory = new File(saveDirPath);
+        if (! directory.exists()) {
+            directory.mkdirs();
+        }
+
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        ObjectWriter writer = mapper.writer(new DefaultPrettyPrinter());
+
+        File jsonFile = new File(saveJsonPath);
+        jsonFile.createNewFile();
+        writer.writeValue(jsonFile, clusters);
+    }
+
 }
