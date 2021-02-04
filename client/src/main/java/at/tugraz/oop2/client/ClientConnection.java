@@ -127,34 +127,28 @@ public final class ClientConnection implements AutoCloseable {
         CompletableFuture<List<ClusterDescriptor>> dataSeriesCompletableFuture = new CompletableFuture<>();
         System.out.println(somQueryParameters);
         ClusteringResult clusteringResult = null;
-        List<ClusterDescriptor> finalClusterinResult = null;
         outputStream.writeObject(somQueryParameters);
         String saveDirPath = "clusteringResults/";
         String saveDirId= "clusteringResults/"+ String.valueOf(somQueryParameters.getResultId()) ;
 
-        File directory = new File(saveDirPath);
-        if (! directory.exists()) {
-            directory.mkdirs();
-        }
-        File id_directory = new File(saveDirId);
-        if (! id_directory.exists()) {
-            id_directory.mkdirs();
-        }
-        else {
-            throw new Exception("ResultID already used!");
-        }
         for(int i = 0; i < somQueryParameters.getAmountOfIntermediateResults(); i++)
         {
             clusteringResult = (ClusteringResult) inputStream.readObject();
             if(clusteringResult == null)
             {
-                List<String>  errors = (List<String>) inputStream.readObject();
-                String error_msg = "";
-                for (String error: errors) {
-                    error_msg += error + "\n";
-                }
                 outputStream.reset();
-                throw new Exception(error_msg);
+                throw new Exception("Clustering error");
+            }
+            File directory = new File(saveDirPath);
+            if (! directory.exists()) {
+                directory.mkdirs();
+            }
+            File id_directory = new File(saveDirId);
+            if (! id_directory.exists()) {
+                id_directory.mkdirs();
+            }
+            else {
+                throw new Exception("ResultID already used!");
             }
             String saveJsonDir = saveDirPath + File.separator + String.valueOf(somQueryParameters.getResultId());
             saveClusteringResultsToJsonFile(clusteringResult, saveJsonDir);

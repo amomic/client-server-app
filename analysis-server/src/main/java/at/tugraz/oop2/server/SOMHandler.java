@@ -80,10 +80,12 @@ public final class SOMHandler {
 
     private void initWeights() {
         Random random = new Random();
+        double rangeMin = 0;
+        double rangeMax = 1;
         for (int i = 0; i < this.height; i++) {
             for (int j = 0; j < this.width; j++) {
                 for (int p = 0; p < this.length; p++) {
-                    this.weights[i][j][p] = random.nextDouble();
+                    this.weights[i][j][p] = rangeMin + (rangeMax - rangeMin) * random.nextDouble();
                 }
             }
         }

@@ -138,19 +138,21 @@ public final class CommandHandler {
         Logger.clientRequestData(dataQueryParameters);
         System.out.println("Client request is sent!");
 
-        final DataSeries series = conn.queryData(dataQueryParameters).get();
+        DataSeries dataSeries = conn.queryData(dataQueryParameters).get();
 
-        if(series.size() == 0) {
+        if (dataSeries == null)
+        {
             Logger.err("Two or more missing data points. No response from the server.");
             System.out.println("Two or more missing data points. No response from the server.");
-        } else {
-            Logger.clientResponseData(dataQueryParameters, series);
+        }
+        else
+        {
+            Logger.clientResponseData(dataQueryParameters, dataSeries);
             System.out.println("Client response:");
             System.out.println("| ----------------------------------------------|");
             System.out.println("|      Timestamp        |         Value         |");
             System.out.println("| ----------------------------------------------|");
-
-            series.forEach((DataPoint datapoint) -> {
+            dataSeries.forEach((DataPoint datapoint) -> {
                 String line = String.format("|  %20s |  %20s | ", datapoint.getTime().toString(), String.valueOf(datapoint.getValue()));
                 System.out.println(line);
             });
@@ -345,7 +347,6 @@ public final class CommandHandler {
         int width = 1100;
         int height = 900;
 
-
         Picture scatterPlot = new Picture(width, height);
         Graphics2D graphics = scatterPlot.getGraphics2D();
 
@@ -355,7 +356,6 @@ public final class CommandHandler {
         graphics.drawLine(x_offset ,(int)(height*0.05),x_offset, y_offset);
         // X-Axis
         graphics.drawLine(x_offset,y_offset,(int)(width*0.95),y_offset);
-
 
         //sensor 1 min max
         graphics.drawString(String.valueOf(min1.getValue()),(int)(width*0.01),(int)(height*0.94));
@@ -374,7 +374,6 @@ public final class CommandHandler {
 
             graphics.drawRect((int)(width*val1), (int)(height*val2), 10,10);
         }
-
         return scatterPlot;
     }
 
@@ -437,7 +436,6 @@ public final class CommandHandler {
             System.out.println("          ResultID:      " + resultId + " will contain " + inter_results + " intermediate results.");
 
             System.out.println("Check results in json file!");
-
         }
     }
 
@@ -455,6 +453,28 @@ public final class CommandHandler {
         }
 
         Logger.clientListResults();
+    }
+
+    private void removeResults(String... args) throws CommandException {
+        validateArgc(args, 1);
+        String id = args[0];
+        int resultID = 0;
+        if(id.contains("x")){
+            resultID = Integer.decode(id);
+        }
+        else
+            resultID = Integer.parseInt(id);
+        System.out.println("Client request is sent!");
+        String path = "clusteringResults/" + resultID;
+        File delete_file = new File(path);
+        File[] allContents = delete_file.listFiles();
+        if (allContents != null) {
+            for (File file : allContents) {
+                file.delete();
+            }
+        }
+        delete_file.delete();
+        Logger.clientRemoveResult(resultID);
     }
 
     public static void getFiles(File dir) throws CommandException, IOException {
@@ -478,30 +498,7 @@ public final class CommandHandler {
         }
     }
 
-    private void removeResults(String... args) throws CommandException {
-        validateArgc(args, 1);
-
-        String id = args[0];
-        int resultID = 0;
-        if(id.contains("x")){
-            resultID = Integer.decode(id);
-        }
-        else
-            resultID = Integer.parseInt(id);
-        System.out.println("Client request is sent!");
-        String path = "clusteringResults/" + resultID;
-        File delete_file = new File(path);
-        File[] allContents = delete_file.listFiles();
-        if (allContents != null) {
-            for (File file : allContents) {
-                file.delete();
-            }
-        }
-        delete_file.delete();
-        Logger.clientRemoveResult(resultID);
-    }
-
-    // TODO: plotcluster command
+    // TODO: plotcluster
     private List<Integer> queryPlotCluster(String... args) throws Exception{
         final int resultId = Integer.parseUnsignedInt(args[0]);
         final int clusterPlotHeight = Integer.parseInt(args[1]);
@@ -540,10 +537,10 @@ public final class CommandHandler {
         return files;
     }
 
-    // TODO: inspectCluster command
+
+    // TODO: inspect cluster
     private void inspectCluster(String... args) throws CommandException {
         validateArgc(args, 3, 4);
-        //final int resultID = Integer.parseUnsignedInt(args[0]);
         final int heightIndex = Integer.parseUnsignedInt(args[1]);
         final int widthIndex = Integer.parseUnsignedInt(args[2]);
 
@@ -594,13 +591,13 @@ public final class CommandHandler {
         }
     }
 
+
     private void displayHelp(String... args) {
         System.out.println("Usage:");
         System.out.println("  ls\t- Lists all sensors and metrics.");
         System.out.println("  data <sensorId> <metric> <from-time> <to-time> [operation [interval<s|m|h|d>]]\t- Displays historic values measured by a sensor.");
         System.out.println("  linechart <sensorId> <metric> <from-time> <to-time> [operation [interval<s|m|h|d>]]\t- Creates a Linechart png with values measured by a sensor.");
         System.out.println("  scatterplot <sensorId1> <metric1> <sensorId2> <metric2> <from-time> <to-time> [operation [interval<s|m|h|d>]]\t- Creates a Scatterplot png with values measured by two sensors.");
-        // added help command description
         System.out.println(
                 "  cluster (all | <id>[,<id>]+) <metric> <from> <to> <interval> <operation> <length> <gridHeight> <gridWidth> <updateRadius> <learningRate> <iterationPerCurve> <resultID> <amountOfIntermediateResults>");
         System.out.println("              - SOM clustering operation on the server.");
@@ -615,7 +612,6 @@ public final class CommandHandler {
         System.out.println("More information is contained in the assignment description and in the folder queries/.");
         System.out.println();
     }
-
 
     @FunctionalInterface
     private interface Command {

@@ -1,9 +1,11 @@
 package at.tugraz.oop2.server;
 
-import at.tugraz.oop2.InterpolationException;
+import at.tugraz.oop2.exceptions.CurvesPartitionException;
+import at.tugraz.oop2.exceptions.InterpolationException;
 import at.tugraz.oop2.Logger;
 import at.tugraz.oop2.Util;
 import at.tugraz.oop2.data.*;
+import at.tugraz.oop2.exceptions.InvalidSensorException;
 
 import java.io.*;
 import java.net.Socket;
@@ -17,10 +19,12 @@ public class ServerThread extends Thread {
     String path;
     List<Sensor> sensorList = new ArrayList<>();
 
+
     ServerThread(Socket socket, String path) {
         this.socket = socket;
         this.path = path;
     }
+
 
     @Override
     public void run() {
@@ -62,72 +66,48 @@ public class ServerThread extends Thread {
                     Logger.serverRequestData(parameters);
                     System.out.println("Server request is sent!");
 
-                    DataSeries dataSeries = queryData(parameters);
-
-                    outputStream.writeObject(dataSeries);
-                    outputStream.reset();
-
-                    if (dataSeries.size() != 0) {
+                    DataSeries dataSeries;
+                    try {
+                        dataSeries = queryData(parameters);
+                        outputStream.writeObject(dataSeries);
+                        outputStream.reset();
                         Logger.serverResponseData(parameters, dataSeries);
                         System.out.println("Server response:");
-
                         System.out.println("| ----------------------------------------------|");
                         System.out.println("|      Timestamp        |         Value         |");
                         System.out.println("| ----------------------------------------------|");
-
                         dataSeries.forEach((DataPoint datapoint) -> {
                             String line = String.format("|  %20s |  %20s | ", datapoint.getTime().toString(), String.valueOf(datapoint.getValue()));
                             System.out.println(line);
                         });
                         System.out.println("| ----------------------------------------------|");
-                    } else {
-                        Logger.err("Two or more missing DataPoints existing after performing operation for requested interval");
-                        System.out.println("Two or more missing DataPoints existing after performing operation for requested interval");
+                    } catch (InterpolationException e) {
+                        outputStream.writeObject(null);
+                        outputStream.reset();
+                        Logger.err(e.getMessage());
+                        System.out.println(e.getMessage());
                     }
+
                 } else if (msg instanceof SOMQueryParameters) {
                     SOMQueryParameters somParameters = (SOMQueryParameters) msg;
                     System.out.println("Server request is sent!");
-
-                    ArrayList<String> invalidSensorsOrMetrics = new ArrayList<String>();
-                    // do all of the given sensors exist (if given by IDs)
-                    // if the sensor exists, does it offer the given metric
-                    // query sensors if data not present / empty
-                    if (sensorList.size() == 0) {
-                        File file = new File(path + "/sensors");
-                        querySensors(file);
-                    }
-                    for (Integer receivedSensorId : somParameters.getSensorIds()) {
-                        Sensor sensor = null;
-                        for (Sensor s : sensorList) {
-                            if (s.getId() == receivedSensorId) {
-                                sensor = s;
-                                break;
-                            }
-                        }
-                        if (sensor == null) {
-                            invalidSensorsOrMetrics.add("(invalid sensor ID) " + receivedSensorId.toString());
-                        } else {
-                            String sensorMetric = sensor.getMetric();
-                            String paramMetric = somParameters.getMetric();
-                            if (!sensorMetric.equals(paramMetric)) {
-                                System.out.println("Check entered metric!");
-                                invalidSensorsOrMetrics.add("(invalid sensor/metric pair): (sensor) " + sensor.getId() + " - (metric) " + paramMetric);
-                            } else {
-                                ClusteringResult result = queryCluster(somParameters);
-                                outputStream.writeObject(result);
-                                outputStream.reset();
-                            }
-                        }
-
-                    }
-
-                    if (invalidSensorsOrMetrics.size() != 0) {
-                        System.out.println("You entered invalid sensor or its metrics!");
-                        outputStream.writeObject(null);
-                        outputStream.writeObject(invalidSensorsOrMetrics);
+                    try
+                    {
+                        checkIfPartionable(somParameters.getFrom(), somParameters.getTo(), somParameters.getLength(), somParameters.getInterval());
+                        validateSensors(somParameters);
+                        ClusteringResult result = queryCluster(somParameters);
+                        outputStream.writeObject(result);
                         outputStream.reset();
-                        return;
                     }
+                    catch (CurvesPartitionException | InvalidSensorException | InterpolationException e)
+                    {
+                        Logger.err(e.getMessage());
+                        System.out.println(e.getMessage());
+                        outputStream.writeObject(null);
+                        outputStream.reset();
+                    }
+
+
                 }
             }
         } catch (IOException e) {
@@ -138,6 +118,7 @@ public class ServerThread extends Thread {
             System.err.println("Class definition missing!");
         }
     }
+
 
     private void querySensors(File file) throws IOException {
         boolean is_not_directory = false;
@@ -189,7 +170,8 @@ public class ServerThread extends Thread {
 
 
     private DataSeries queryData(DataQueryParameters parameters)
-            throws IOException {
+            throws IOException, InterpolationException
+    {
         File dataDir = new File(path + "/sensors");
         List<File> sensorFiles = getSensorFiles(dataDir, parameters.getSensorId());
         Sensor sensor = getSensorFromFile(sensorFiles.get(0), parameters);
@@ -197,26 +179,49 @@ public class ServerThread extends Thread {
         for (File sensorCsvFile : sensorFiles) {
             dataPoints.addAll(getDataPointsFromFile(sensorCsvFile, parameters));
         }
+
         DataSeries series = new DataSeries(sensor, (int) parameters.getInterval(), parameters.getOperation());
 
         if (parameters.getOperation() == null) {
             series.addAll(dataPoints);
         } else {
-            try {
-                List<DataPoint> interpolatedPoints = this.interpolateDataPoints(dataPoints,
-                        parameters.getFrom(), parameters.getTo(), parameters.getInterval(), parameters.getOperation());
-                series.addAll(interpolatedPoints);
-            } catch (InterpolationException e) {
-                return series;
-            }
+            List<DataPoint> interpolatedPoints = this.interpolateDataPoints(dataPoints,
+                    parameters.getFrom(), parameters.getTo(), parameters.getInterval(), parameters.getOperation());
+            series.addAll(interpolatedPoints);
         }
         return series;
     }
 
+
+    private DataSeries queryData(DataQueryParameters parameters, int length)
+            throws IOException, InterpolationException
+    {
+        File dataDir = new File(path + "/sensors");
+        List<File> sensorFiles = getSensorFiles(dataDir, parameters.getSensorId());
+        Sensor sensor = getSensorFromFile(sensorFiles.get(0), parameters);
+        List<DataPoint> dataPoints = new ArrayList<>();
+        for (File sensorCsvFile : sensorFiles) {
+            dataPoints.addAll(getDataPointsFromFile(sensorCsvFile, parameters));
+        }
+
+        DataSeries series = new DataSeries(sensor, (int) parameters.getInterval(), parameters.getOperation());
+
+        if (parameters.getOperation() == null) {
+            series.addAll(dataPoints);
+        } else {
+            List<DataPoint> interpolatedPoints = this.interpolateDataPoints(dataPoints,
+                    parameters.getFrom(), parameters.getTo(), parameters.getInterval(), length, parameters.getOperation());
+            series.addAll(interpolatedPoints);
+        }
+        return series;
+    }
+
+
     private List<DataPoint> filterDataPointsByTimeInterval(
             List<DataPoint> dataPoints,
             LocalDateTime from, LocalDateTime to,
-            boolean fromExclusive, boolean toExclusive) {
+            boolean fromExclusive, boolean toExclusive)
+    {
         List<DataPoint> filteredPoints = new ArrayList<>();
         for (DataPoint dataPoint : dataPoints) {
             if ((dataPoint.getTime().isAfter(from) || (dataPoint.getTime().isEqual(from) && !fromExclusive))
@@ -227,6 +232,7 @@ public class ServerThread extends Thread {
         Collections.sort(filteredPoints);
         return filteredPoints;
     }
+
 
     private List<DataPoint> interpolateDataPoints(List<DataPoint> dataPoints,
                                                   LocalDateTime from, LocalDateTime to,
@@ -249,7 +255,7 @@ public class ServerThread extends Thread {
             {
                 if (prevMissing)
                 {
-                    throw new InterpolationException("");
+                    throw new InterpolationException("Two or more missing DataPoints existing after performing operation for requested interval");
                 }
                 else
                 {
@@ -262,15 +268,31 @@ public class ServerThread extends Thread {
             else
             {
                 result.add(new DataPoint(t, interpolationValue));
-                if (prevMissing) {
-                    DataPoint first = result.get(result.size()-3);
-                    DataPoint second = result.get(result.size()-1);
-                    double avgValue = (first.getValue() + second.getValue()) / 2.0;
-                    DataPoint interpolated = new DataPoint(prevMissingTime, avgValue);
-                    result.set(prevMissingIdx, interpolated);
+                if (prevMissing)
+                {
+                    if (from.isEqual(prevMissingTime))
+                    {
+                        result.set(prevMissingIdx, new DataPoint(prevMissingTime, interpolationValue));
+                    }
+                    else
+                    {
+                        DataPoint first = result.get(result.size()-3);
+                        DataPoint second = result.get(result.size()-1);
+                        double avgValue = (first.getValue() + second.getValue()) / 2.0;
+                        DataPoint interpolated = new DataPoint(prevMissingTime, avgValue);
+                        result.set(prevMissingIdx, interpolated);
+                    }
                     prevMissing = false;
                 }
             }
+        }
+
+        if (result.get(result.size() -1) == null)
+        {
+            DataPoint preFinalDataPoint = result.get(result.size() -2);
+            DataPoint finalDataPoint = new DataPoint(preFinalDataPoint.getTime().plusSeconds(interval),
+                    preFinalDataPoint.getValue());
+            result.set(result.size() -1, finalDataPoint);
         }
 
         return result;
@@ -330,7 +352,7 @@ public class ServerThread extends Thread {
                 }
                 else if (prevMissing && currValueIdx % length != 0)
                 {
-                    throw new InterpolationException("");
+                    throw new InterpolationException("Two or more missing DataPoints existing after performing operation for requested interval");
                 }
                 result.add(null);
                 prevMissing = true;
@@ -342,7 +364,7 @@ public class ServerThread extends Thread {
                 result.add(new DataPoint(t, interpolationValue));
                 if (prevMissing && currValueIdx%length == 1)
                 {
-                    result.set(prevMissingIdx, result.get(currValueIdx));
+                    result.set(prevMissingIdx, new DataPoint(prevMissingTime, interpolationValue));
                     prevMissing = false;
                 }
                 else if (prevMissing)
@@ -355,6 +377,14 @@ public class ServerThread extends Thread {
                     prevMissing = false;
                 }
             }
+        }
+
+        if (result.get(result.size() -1) == null)
+        {
+            DataPoint preFinalDataPoint = result.get(result.size() -2);
+            DataPoint finalDataPoint = new DataPoint(preFinalDataPoint.getTime().plusSeconds(interval),
+                    preFinalDataPoint.getValue());
+            result.set(result.size() -1, finalDataPoint);
         }
 
         return result;
@@ -445,63 +475,28 @@ public class ServerThread extends Thread {
 
 
     // TODO: 2nd assignment implementation
-
-    private ClusteringResult queryCluster(SOMQueryParameters parameters) throws IOException {
-        List<DataSeries> inputData = this.getCurves(parameters);
+    private ClusteringResult queryCluster(SOMQueryParameters parameters) throws IOException, InterpolationException {
+        List<DataSeries> clusterInputData = new ArrayList<>();
+        for (Integer sensorId : parameters.getSensorIds())
+        {
+            DataQueryParameters dataQueryParameters = new DataQueryParameters(sensorId,
+                    parameters.getMetric(), parameters.getFrom(), parameters.getTo(),
+                    parameters.getOperation(), parameters.getInterval());
+            DataSeries interpolatedData = this.queryData(dataQueryParameters, parameters.getLength());
+            List<DataSeries> partitions = this.partitionDataSeries(interpolatedData, parameters.getLength());
+            clusterInputData.addAll(partitions);
+        }
         SOMHandler somHandler = new SOMHandler(
-                inputData, parameters.getGridHeight(), parameters.getGridWidth(), parameters.getLength(),
+                clusterInputData, parameters.getGridHeight(), parameters.getGridWidth(), parameters.getLength(),
                 parameters.getLearningRate(), parameters.getUpdateRadius(), (int) parameters.getIterationsPerCurve(),
                 parameters.getAmountOfIntermediateResults());
+
         somHandler.run();
         Map<Integer, List<ClusterDescriptor>> trainingClusters = somHandler.getTrainingProgressClusters();
         List<ClusterDescriptor> finalCluster = somHandler.getClusters();
         return new ClusteringResult(trainingClusters, finalCluster);
     }
 
-    private List<DataSeries> getCurves(SOMQueryParameters parameters) throws IOException {
-        List<DataSeries> inputData = new ArrayList<>();
-        List<Integer> sensorIds = new ArrayList<>();
-        if (parameters.getSensorIds().get(0) == 0) {
-            File file = new File(path + "/sensors");
-            querySensors(file);
-            for (int i = 0; i < sensorList.size(); i++) {
-                if (i % 2 == 0) {
-                    sensorIds.add(sensorList.get(i).getId());
-                }
-            }
-            for (int id : sensorIds) {
-                DataQueryParameters queryParameters = new DataQueryParameters(id, parameters.getMetric(),
-                        parameters.getFrom(), parameters.getTo(), parameters.getOperation(), parameters.getInterval());
-
-                try {
-                    DataSeries queryResult = queryData(queryParameters);
-                    if (queryResult.isEmpty()) {
-                        throw new Exception();
-                    }
-
-                    inputData.addAll(this.partitionDataSeries(queryResult, parameters.getLength()));
-                } catch (Exception e) {
-                    continue;
-                }
-            }
-        } else {
-            for (int sensorId : parameters.getSensorIds()) {
-                DataQueryParameters queryParameters = new DataQueryParameters(sensorId, parameters.getMetric(),
-                        parameters.getFrom(), parameters.getTo(), parameters.getOperation(), parameters.getInterval());
-                try {
-                    DataSeries queryResult = queryData(queryParameters);
-
-                    if (queryResult.isEmpty()) {
-                        throw new Exception();
-                    }
-                    inputData.addAll(this.partitionDataSeries(queryResult, parameters.getLength()));
-                } catch (Exception e) {
-                    continue;
-                }
-            }
-        }
-        return inputData;
-    }
 
     private List<DataSeries> partitionDataSeries(DataSeries dataSeries, int batchSize) {
         List<DataSeries> partitioned = new ArrayList<>();
@@ -517,15 +512,50 @@ public class ServerThread extends Thread {
         return partitioned;
     }
 
-    public void checkIfPartionable(LocalDateTime from, LocalDateTime to, int length, long interval) throws IllegalArgumentException {
+
+    public void checkIfPartionable(LocalDateTime from, LocalDateTime to, int length, long interval)
+            throws CurvesPartitionException
+    {
         long diff = Duration.between(from, to).toSeconds();
         long numberOfPoints = diff / interval;
         if (numberOfPoints % length != 0) {
-            throw new IllegalArgumentException("Cannot divide into arrays of the same length!");
+            throw new CurvesPartitionException("Cannot divide data series into multiple curves of the same length!");
         }
     }
 
-    //TODO: plotcluster command
+
+    public void validateSensors(SOMQueryParameters somParameters) throws IOException, InvalidSensorException {
+        ArrayList<String> invalidSensorsOrMetrics = new ArrayList<>();
+
+        if (sensorList.size() == 0) {
+            File file = new File(path + "/sensors");
+            querySensors(file);
+        }
+
+        for (Integer receivedSensorId : somParameters.getSensorIds()) {
+            Sensor sensor = null;
+            for (Sensor s : sensorList) {
+                if (s.getId() == receivedSensorId) {
+                    sensor = s;
+                    break;
+                }
+            }
+            if (sensor == null) {
+                invalidSensorsOrMetrics.add("(invalid sensor ID) " + receivedSensorId.toString());
+            } else {
+                String sensorMetric = sensor.getMetric();
+                String paramMetric = somParameters.getMetric();
+                if (!sensorMetric.equals(paramMetric)) {
+                    invalidSensorsOrMetrics.add("(invalid sensor/metric pair): (sensor) " + sensor.getId() + " - (metric) " + paramMetric);
+                }
+            }
+        }
+
+        if (invalidSensorsOrMetrics.size() != 0) {
+            throw new InvalidSensorException(String.join("\n", invalidSensorsOrMetrics));
+        }
+    }
+
     private void queryPlotCluster(SOMQueryParameters parameters) throws IOException {
 
 
