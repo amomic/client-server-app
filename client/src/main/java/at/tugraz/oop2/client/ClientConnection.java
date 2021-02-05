@@ -123,9 +123,8 @@ public final class ClientConnection implements AutoCloseable {
 
     //TODO: implemetation of the 2nd assignment
 
-    public CompletableFuture<List<ClusterDescriptor>> queryCluster(SOMQueryParameters somQueryParameters) throws IOException, ClassNotFoundException, Exception {
+    public CompletableFuture<List<ClusterDescriptor>> queryCluster(SOMQueryParameters somQueryParameters) throws Exception {
         CompletableFuture<List<ClusterDescriptor>> dataSeriesCompletableFuture = new CompletableFuture<>();
-        System.out.println(somQueryParameters);
         ClusteringResult clusteringResult = null;
         outputStream.writeObject(somQueryParameters);
         String saveDirPath = "clusteringResults/";

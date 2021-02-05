@@ -38,7 +38,6 @@ public class ServerThread extends Thread {
             while (true) {
                 synchronized (inputStream) {
                     msg = inputStream.readObject();
-
                 }
                 if (msg instanceof String && msg.equals("queryLS")) {
                     Logger.serverRequestLS();
@@ -90,10 +89,10 @@ public class ServerThread extends Thread {
 
                 } else if (msg instanceof SOMQueryParameters) {
                     SOMQueryParameters somParameters = (SOMQueryParameters) msg;
+                    Logger.serverRequestCluster(somParameters);
                     System.out.println("Server request is sent!");
 
                     ClusteringResult result;
-
                     try
                     {
                         checkIfPartionable(somParameters.getFrom(), somParameters.getTo(), somParameters.getLength(), somParameters.getInterval());
@@ -101,6 +100,10 @@ public class ServerThread extends Thread {
                         result = queryCluster(somParameters);
                         outputStream.writeObject(result);
                         outputStream.reset();
+
+                        // print server response
+                        Logger.serverResponseCluster(somParameters);
+                        System.out.println("Server sent the response, check files!");
                     }
                     catch (CurvesPartitionException | InvalidSensorException | InterpolationException e)
                     {
@@ -109,8 +112,6 @@ public class ServerThread extends Thread {
                         Logger.err(e.getMessage());
                         System.out.println(e.getMessage());
                     }
-
-
                 }
             }
         } catch (IOException e) {
