@@ -91,20 +91,23 @@ public class ServerThread extends Thread {
                 } else if (msg instanceof SOMQueryParameters) {
                     SOMQueryParameters somParameters = (SOMQueryParameters) msg;
                     System.out.println("Server request is sent!");
+
+                    ClusteringResult result;
+
                     try
                     {
                         checkIfPartionable(somParameters.getFrom(), somParameters.getTo(), somParameters.getLength(), somParameters.getInterval());
                         validateSensors(somParameters);
-                        ClusteringResult result = queryCluster(somParameters);
+                        result = queryCluster(somParameters);
                         outputStream.writeObject(result);
                         outputStream.reset();
                     }
                     catch (CurvesPartitionException | InvalidSensorException | InterpolationException e)
                     {
-                        Logger.err(e.getMessage());
-                        System.out.println(e.getMessage());
                         outputStream.writeObject(null);
                         outputStream.reset();
+                        Logger.err(e.getMessage());
+                        System.out.println(e.getMessage());
                     }
 
 
@@ -482,6 +485,7 @@ public class ServerThread extends Thread {
             DataQueryParameters dataQueryParameters = new DataQueryParameters(sensorId,
                     parameters.getMetric(), parameters.getFrom(), parameters.getTo(),
                     parameters.getOperation(), parameters.getInterval());
+
             DataSeries interpolatedData = this.queryData(dataQueryParameters, parameters.getLength());
             List<DataSeries> partitions = this.partitionDataSeries(interpolatedData, parameters.getLength());
             clusterInputData.addAll(partitions);

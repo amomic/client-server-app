@@ -35,12 +35,25 @@ public final class DataSeries extends TreeSet<DataPoint> {
     public double[] getValues() {
         List<Double> values = new ArrayList<>();
         for (DataPoint p : this) {
-
             values.add(p.getValue());
         }
         return values.stream()
                 .mapToDouble(Number::doubleValue)
                 .toArray();
+    }
+
+    public double[] getMinimumAndMaximumValue() {
+        double minimum = Double.MAX_VALUE;
+        double maximum = Double.MIN_VALUE;
+        for (DataPoint p : this) {
+            if (p.getValue() < minimum) {
+                minimum = p.getValue();
+            }
+            if (p.getValue() > maximum) {
+                maximum = p.getValue();
+            }
+        }
+        return new double[]{minimum, maximum};
     }
 
     public enum Operation {

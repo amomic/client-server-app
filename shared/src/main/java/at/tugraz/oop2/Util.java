@@ -1,5 +1,6 @@
 package at.tugraz.oop2;
 
+import at.tugraz.oop2.data.DataSeries;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;

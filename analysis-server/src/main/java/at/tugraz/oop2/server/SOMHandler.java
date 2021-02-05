@@ -2,9 +2,11 @@ package at.tugraz.oop2.server;
 
 import at.tugraz.oop2.Util;
 import at.tugraz.oop2.data.ClusterDescriptor;
+import at.tugraz.oop2.data.DataPoint;
 import at.tugraz.oop2.data.DataSeries;
 
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 
@@ -79,13 +81,13 @@ public final class SOMHandler {
 
 
     private void initWeights() {
-        Random random = new Random();
-        double rangeMin = 0;
-        double rangeMax = 1;
+        double[] dataMinMax = this.findMinAndMax();
+        double rangeMin = dataMinMax[0];
+        double rangeMax = dataMinMax[1];
         for (int i = 0; i < this.height; i++) {
             for (int j = 0; j < this.width; j++) {
                 for (int p = 0; p < this.length; p++) {
-                    this.weights[i][j][p] = rangeMin + (rangeMax - rangeMin) * random.nextDouble();
+                    this.weights[i][j][p] = ThreadLocalRandom.current().nextDouble(rangeMin, rangeMax);
                 }
             }
         }
@@ -97,8 +99,14 @@ public final class SOMHandler {
             // adjust update radius and learning rate for each step
             // decay function is time decay: meaning the radius and learning rate will be X% less with every iteration
             this.iteration = t;
-            this.currentUpdateRadius = this.updateRadius * 1 / (1 + this.updateRadiusDecayRate * this.iteration);
-            this.currentLearningRate = this.learningRate * 1 / (1 + this.learningRateDecayRate * this.iteration);
+
+            // approach 1
+//            this.currentUpdateRadius = this.updateRadius * 1 / (1 + this.updateRadiusDecayRate * this.iteration);
+//            this.currentLearningRate = this.learningRate * 1 / (1 + this.learningRateDecayRate * this.iteration);
+
+            // approach 2
+            this.currentUpdateRadius = Math.max(0, this.currentUpdateRadius - this.updateRadiusDecayRate);
+            this.currentLearningRate = Math.max(0, this.currentLearningRate - this.learningRateDecayRate);
 
             for (DataSeries sample : this.data) {
 
@@ -226,6 +234,22 @@ public final class SOMHandler {
             progress.put(entry.getKey(), clusters);
         }
         return progress;
+    }
+
+
+    private double[] findMinAndMax() {
+        double minimum = Double.MAX_VALUE;
+        double maximum = Double.MIN_VALUE;
+        for (DataSeries series : this.data) {
+            double[] seriesMinMax = series.getMinimumAndMaximumValue();
+            if (seriesMinMax[0] < minimum) {
+                minimum = seriesMinMax[0];
+            }
+            if (seriesMinMax[1] > maximum) {
+                maximum = seriesMinMax[1];
+            }
+        }
+        return new double[]{minimum, maximum};
     }
 
 }
