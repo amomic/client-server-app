@@ -127,14 +127,10 @@ public final class ClientConnection implements AutoCloseable {
 
     //TODO: implemetation of the 2nd assignment
 
-<<<<<<< Updated upstream
+
     public CompletableFuture<List<ClusterDescriptor>> queryCluster(SOMQueryParameters somQueryParameters) throws Exception {
         CompletableFuture<List<ClusterDescriptor>> dataSeriesCompletableFuture = new CompletableFuture<>();
-=======
-    public CompletableFuture<ClusteringResult> queryCluster(SOMQueryParameters somQueryParameters) throws IOException, ClassNotFoundException, Exception {
-        CompletableFuture<ClusteringResult> dataSeriesCompletableFuture = new CompletableFuture<>();
-        //System.out.println(somQueryParameters);
->>>>>>> Stashed changes
+
         ClusteringResult clusteringResult = null;
         outputStream.writeObject(somQueryParameters);
         String saveDirPath = "clusteringResults/";
@@ -170,7 +166,7 @@ public final class ClientConnection implements AutoCloseable {
             //System.out.print("ENDEEE FOR SCHLEIFE\n");
 
         //System.out.print("AUßERHALB FOR SCHLEIFE\n");
-        dataSeriesCompletableFuture.complete(clusteringResult);
+        dataSeriesCompletableFuture.complete((List<ClusterDescriptor>) clusteringResult);
         //System.out.print("ENDDEEEE\n");
         return dataSeriesCompletableFuture;
     }
@@ -233,3 +229,4 @@ public final class ClientConnection implements AutoCloseable {
     }
 
 }
+

@@ -16,6 +16,8 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.stream.Stream;
 
 /**
  * Used for handling and parsing commands. There is little to no work to do for you here, since
@@ -431,11 +433,9 @@ public final class CommandHandler {
         }
         ClusteringResult result = (ClusteringResult) conn.queryCluster(somQueryParameters).get();
 
-
         /*for (int i = 0 ; i < (somQueryParameters.getAmountOfIntermediateResults());i++ ) {
             Logger.clientIntermediateResponse(somQueryParameters, i);
         }*/
-
         Logger.clientResponseCluster(somQueryParameters);
 
 
@@ -518,29 +518,7 @@ public final class CommandHandler {
             Logger.err("Two or more missing cluster points. No response from the server.");
             System.out.println("Two or more missing cluster points. No response from the server.");
         }
-        //final List<ClusteringResult> results = conn.queryResult(resultId).get();
-        //---------------------------------------------------
-        //getFiles((File) results);
-        //final List<Integer> files = Collections.synchronizedList(new ArrayList<>());
-        /*try {
-            results.forEach((final Clu p) -> {
-                if (!boolPlotAllFrames )
-                    System.out.println("Warning: Latest intermediate result found is not the finished result.");
-            });
-        } catch (Exception e) {
-            e.printStackTrace();
-        }*/
-        /*System.out.println(String.format("Wrote %d files", files.size()));
-        if (!boolPlotAllFrames)
-            return files;
-        Optional<String> frames = files.parallelStream().sorted()
-                .map((final Integer p) -> String.format("file 'iter_%d_clusterplot.json'", p))
-                .reduce((final String prev, final String next) -> String.format("%s%n%s", prev, next));*/
-        //---------------------------------------------------
-
-
         ClusteringResult result = conn.queryResult(resultId).get();
-        //System.out.println("WEIIGHHHTTTSSS " + rdList.get(0).getClusters());
         String filename = null;
         if(boolPlotClusterMembers){
             //TODO final result png check it
@@ -550,15 +528,11 @@ public final class CommandHandler {
                     linchartidx.run();
                     linchartidx.saveNew(filename);
                 }
-
-        }else {
+        }
+        else{
             System.out.print("INTERMEDIATE");
-            /*ClusteringResult element = result.get(result.size() - 1);
+            //
             //TODO FINALCLUSTER ITERATION
-            filename = "clusteringResults/" + resultId + "/" + 100 + ".png";
-            ClusterLineChart linchartidx = new ClusterLineChart(element, clusterPlotHeight, clusterPlotWidth);
-            linchartidx.run();
-            linchartidx.saveNew(filename);*/
         }
     }
 
@@ -568,54 +542,65 @@ public final class CommandHandler {
         validateArgc(args, 3, 4);
         final int heightIndex = Integer.parseUnsignedInt(args[1]);
         final int widthIndex = Integer.parseUnsignedInt(args[2]);
-
         String id1 = args[0];
         int resultID1 = 0;
         if(id1.contains("x")){
             resultID1 = Integer.decode(id1);
         }
-        else
+        else {
             resultID1 = Integer.parseInt(id1);
-
+        }
+        ClusterDescriptor results = null;
+        List<ClusterDescriptor> listing = null;
         final boolean boolVerbose = args.length >= 4 && Boolean.parseBoolean(args[3]); // default false
-        try {
-            File cluster = new File("clusteringResults/");
-            final File[] files = cluster.listFiles();
-            if (files == null)
+         try {
+            listing = (List<ClusterDescriptor>) conn.queryResult(resultID1).get();
+            if (results== null)
                 throw new CommandException("Not a directory");
 
-            final String line1 = "\t+------------------------------------------------+";
-            final String line2= "\t+------------------+-----------------------------+";
-            final String separeting3 = "\t+------------+------------+----------------------+";
-            final String ln1 = "\t| %-46s |";
-            final String l2f = "\t| %-16s | %27.5f |";
-            final String ln3 = "\t| %-10s | %-10s | %20s |";
-
-
-            System.out.println(line1);
-            System.out.println(
-                    String.format(ln1, String.format("Node (%d, %d) from %x", heightIndex, widthIndex, resultID1)));
-            System.out.println(line2);
-            System.out.println(String.format(l2f, String.format("#Members"), 0.0));
-            System.out.println(line2);
-            System.out.println(String.format(l2f, String.format("#Error"), -1.0));
-            System.out.println(line2);
-            System.out.println(String.format(l2f, String.format("#Entropy"), -1.0));
-            System.out.println(line2);
-
-            if (boolVerbose == true)
-            {
-                System.out.println(String.format(ln1, String.format("List of all members:")));
-                System.out.println(separeting3);
-                System.out.println(String.format(ln3, String.format("from"), String.format("to"), String.format("sensor")));
+            for( int i = 0; i < listing.size(); i++){
+                for (int j = 0; j < listing.get(i).getClusters().size(); j ++) {
+                    if ((listing.get(i).getClusters().get(j).getHeightIndex() + 1) == heightIndex && (listing.get(i).getClusters().get(j).getWidthIndex() + 1) == widthIndex)
+                    {
+                        results = listing.get(i).getClusters().get(j);
+                        DataSeries from = listing.get(i).getMembers().get(i);
+                        DataSeries to = listing.get(i).getMembers().get(i);
+                        Logger.clientInspectCluster(resultID1, heightIndex,widthIndex, results);
+                        Logger.clientInspectCluster(resultID1, heightIndex,widthIndex, results);
+                        if(boolVerbose){
+                            System.out.print("  | ----------------------------------------------------- |\n");
+                            System.out.print("  |       from       |        to          |   sensor      |\n");
+                            System.out.print("  | ----------------------------------------------------- |\n");
+                            for (DataSeries series : listing.get(i).getClusters().get(j).getMembers()){
+                                System.out.print("  | " + from + " | " );
+                                System.out.print("  | ----------------------------------------------------- |\n");
+                                System.out.print("  " + to + " |");
+                                System.out.print("  | ----------------------------------------------------- |\n");
+                                System.out.print("     "+  series.getSensor().getId() + "      |");
+                                System.out.print("  | ----------------------------------------------------- |\n");
+                                System.out.print("\n");
+                                System.out.print("  | ----------------------------------------------------- |\n");
+                            }
+                        }
+                    }
+                }
             }
 
-        } catch (final NullPointerException ex) {
-            Logger.warn(String.format("Exception inspecting: %s", ex.getMessage()));
-            throw new CommandException("Could not  found inspect cluster");
-        }
-    }
+        } catch (IOException e) {
+             Logger.warn(String.format("Exception inspecting: %s"));
+             throw new CommandException("Could not  found inspect cluster");
+        } catch (ExecutionException e) {
+             e.printStackTrace();
+         } catch (InterruptedException e) {
+             e.printStackTrace();
+         } catch (ClassNotFoundException e) {
+             e.printStackTrace();
+         } catch (Exception e) {
+             e.printStackTrace();
+         }
 
+
+    }
 
     private void displayHelp(String... args) {
         System.out.println("Usage:");
