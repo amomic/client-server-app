@@ -1,6 +1,7 @@
 package at.tugraz.oop2.client;
 
 import at.tugraz.oop2.Logger;
+import at.tugraz.oop2.Util;
 import at.tugraz.oop2.data.*;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,6 +15,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -33,10 +35,12 @@ public final class ClientConnection implements AutoCloseable {
     private ObjectInputStream inputStream;
     private Socket clientSocket;
     private Map<Integer, CompletableFuture> responses = new HashMap<>();
+    private HashMap<String, ClusteringResult> som_results_map;
 
     public ClientConnection() {
         connectionClosedEventHandlers = new LinkedBlockingQueue<>();
         connectionOpenedEventHandlers = new LinkedBlockingQueue<>();
+        som_results_map = new HashMap<>();
     }
 
     public void connect(String url, int port) throws IOException {
@@ -123,15 +127,20 @@ public final class ClientConnection implements AutoCloseable {
 
     //TODO: implemetation of the 2nd assignment
 
+<<<<<<< Updated upstream
     public CompletableFuture<List<ClusterDescriptor>> queryCluster(SOMQueryParameters somQueryParameters) throws Exception {
         CompletableFuture<List<ClusterDescriptor>> dataSeriesCompletableFuture = new CompletableFuture<>();
+=======
+    public CompletableFuture<ClusteringResult> queryCluster(SOMQueryParameters somQueryParameters) throws IOException, ClassNotFoundException, Exception {
+        CompletableFuture<ClusteringResult> dataSeriesCompletableFuture = new CompletableFuture<>();
+        //System.out.println(somQueryParameters);
+>>>>>>> Stashed changes
         ClusteringResult clusteringResult = null;
         outputStream.writeObject(somQueryParameters);
         String saveDirPath = "clusteringResults/";
         String saveDirId= "clusteringResults/"+ String.valueOf(somQueryParameters.getResultId()) ;
-
-        for(int i = 0; i < somQueryParameters.getAmountOfIntermediateResults(); i++)
-        {
+        //for(int i = 0; i < somQueryParameters.getAmountOfIntermediateResults(); i++) {
+            //System.out.print("ANFANG FOR SCHLEIFE\n");
             clusteringResult = (ClusteringResult) inputStream.readObject();
             if(clusteringResult == null)
             {
@@ -149,24 +158,40 @@ public final class ClientConnection implements AutoCloseable {
             else {
                 throw new Exception("ResultID already used!");
             }
+            //System.out.print("MITTE FOR SCHLEIFE\n");
             String saveJsonDir = saveDirPath + File.separator + String.valueOf(somQueryParameters.getResultId());
-            saveClusteringResultsToJsonFile(clusteringResult, saveJsonDir);
+            saveClusteringResultsToJsonFile(somQueryParameters, clusteringResult, saveJsonDir);
+            //List<ClusteringResult> entry = new ArrayList<>();
+            //if(som_results_map.containsKey(Integer.toString(somQueryParameters.getResultId())))
+            //    entry = som_results_map.get(Integer.toString(somQueryParameters.getResultId()));
+            //entry.add(clusteringResult);
+            som_results_map.put(Integer.toString(somQueryParameters.getResultId()), clusteringResult);
             outputStream.reset();
-        }
-        dataSeriesCompletableFuture.complete(clusteringResult.getFinalClusters());
+            //System.out.print("ENDEEE FOR SCHLEIFE\n");
+
+        //System.out.print("AUßERHALB FOR SCHLEIFE\n");
+        dataSeriesCompletableFuture.complete(clusteringResult);
+        //System.out.print("ENDDEEEE\n");
         return dataSeriesCompletableFuture;
     }
 
-    public CompletableFuture<List<Sensor>> queryResults() throws IOException, ClassNotFoundException {
-        CompletableFuture<List<Sensor>> results = new CompletableFuture<>();
-        outputStream.writeObject("queryResults");
-        WrapperLsObject wrapperLsObject = (WrapperLsObject) inputStream.readObject();
-        outputStream.reset();
-        results.complete(wrapperLsObject.getSensorList());
-        return results;
+
+    public CompletableFuture<ClusteringResult> queryResult(int resultID) throws IOException, ClassNotFoundException, Exception
+    {
+        ClusteringResult entry = null;
+        CompletableFuture<ClusteringResult> compFuture = new CompletableFuture<ClusteringResult>();
+        Logger.clientRequestLS();
+        if(som_results_map.containsKey(Integer.toString(resultID)))
+            entry = som_results_map.get(Integer.toString(resultID));
+        compFuture = CompletableFuture.completedFuture(entry);
+        return compFuture;
     }
 
-    private void saveClusteringResultsToJsonFile(ClusteringResult result, String clusteringResultsDir) throws IOException {
+
+
+
+
+    private void saveClusteringResultsToJsonFile(SOMQueryParameters somQueryParameters, ClusteringResult result, String clusteringResultsDir) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         SimpleModule dataSeriesModule = new SimpleModule();
@@ -181,18 +206,25 @@ public final class ClientConnection implements AutoCloseable {
             directory.mkdirs();
         }
 
+        int i = 0;
+        int add = (int) (somQueryParameters.getIterationsPerCurve() / somQueryParameters.getAmountOfIntermediateResults());
+        // 10000/100 = 10
+
         // save training results first
         for (Map.Entry<Integer, List<ClusterDescriptor>> entry: result.getTrainingProgressClusters().entrySet())
         {
             File jsonFile = new File(clusteringResultsDir + File.separator + entry.getKey().toString() + ".json");
             jsonFile.createNewFile();
             writer.writeValue(jsonFile, entry.getValue());
+            Logger.clientIntermediateResponse(somQueryParameters, i);
+            i += add;
         }
 
         // save final result
         File jsonFile = new File(clusteringResultsDir + File.separator + "final.json");
         jsonFile.createNewFile();
         writer.writeValue(jsonFile, result.getFinalClusters());
+
     }
 
     @FunctionalInterface

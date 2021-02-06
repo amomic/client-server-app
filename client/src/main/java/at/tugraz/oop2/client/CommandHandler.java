@@ -403,9 +403,9 @@ public final class CommandHandler {
         final int iterations =  Integer.parseUnsignedInt(args[11]);
         final int resultId = Integer.decode(args[12]);
         final int inter_results =  Integer.parseUnsignedInt(args[13]);
-        List<ClusterDescriptor> series = null;
+        //List<ClusterDescriptor> series = null;
 
-        final SOMQueryParameters somQueryParameters = new SOMQueryParameters(intList, type, from, to, operation, interval, length,grid_length,grid_width,radius,rate,
+        SOMQueryParameters somQueryParameters = new SOMQueryParameters(intList, type, from, to, operation, interval, length,grid_length,grid_width,radius,rate,
                 iterations, resultId,inter_results);
         Logger.clientRequestCluster(somQueryParameters);
 
@@ -415,14 +415,6 @@ public final class CommandHandler {
             System.out.println("Exception will be thrown! Length value is not valid!");
             throw new Exception("Cannot divide into arrays of the same length");
         }
-        try{
-            series = conn.queryCluster(somQueryParameters).get();
-        } catch(Exception e)
-        {
-            System.out.println("Error: " + e.getMessage());
-            return;
-        }
-
         if(numberOfIntervals % somQueryParameters.getLength() == 0)
         {
             System.out.println("Client request is sent!");
@@ -437,6 +429,16 @@ public final class CommandHandler {
 
             System.out.println("Check results in json file!");
         }
+        ClusteringResult result = (ClusteringResult) conn.queryCluster(somQueryParameters).get();
+
+
+        /*for (int i = 0 ; i < (somQueryParameters.getAmountOfIntermediateResults());i++ ) {
+            Logger.clientIntermediateResponse(somQueryParameters, i);
+        }*/
+
+        Logger.clientResponseCluster(somQueryParameters);
+
+
     }
 
     @SneakyThrows
@@ -499,8 +501,8 @@ public final class CommandHandler {
     }
 
     // TODO: plotcluster
-    private List<Integer> queryPlotCluster(String... args) throws Exception{
-        final int resultId = Integer.parseUnsignedInt(args[0]);
+    private void queryPlotCluster(String... args) throws Exception{
+        final int resultId = Integer.decode(args[0]);
         final int clusterPlotHeight = Integer.parseInt(args[1]);
         final int clusterPlotWidth = Integer.parseInt(args[2]);
         final boolean boolPlotClusterMembers = Boolean.parseBoolean(args[3]);
@@ -508,7 +510,7 @@ public final class CommandHandler {
         final boolean boolPlotAllFrames = Boolean.parseBoolean(args[5]);
         if (clusterPlotHeight <= 0 || clusterPlotWidth <= 0)
             Logger.err("Width and Height have to be positive.");
-        System.out.println("Width and Height have to be positive.");
+
         final String cluster = Integer.toString(resultId);
         System.out.println("Client request is sent!");
         Logger.clientPlotCluster(resultId, boolPlotClusterMembers, heatMapOperation, boolPlotAllFrames);
@@ -516,25 +518,48 @@ public final class CommandHandler {
             Logger.err("Two or more missing cluster points. No response from the server.");
             System.out.println("Two or more missing cluster points. No response from the server.");
         }
-        final List<Sensor> results = conn.queryResults().get();
-        getFiles((File) results);
-        final List<Integer> files = Collections.synchronizedList(new ArrayList<>());
-        try {
-
-            results.forEach((final Sensor p) -> {
+        //final List<ClusteringResult> results = conn.queryResult(resultId).get();
+        //---------------------------------------------------
+        //getFiles((File) results);
+        //final List<Integer> files = Collections.synchronizedList(new ArrayList<>());
+        /*try {
+            results.forEach((final Clu p) -> {
                 if (!boolPlotAllFrames )
                     System.out.println("Warning: Latest intermediate result found is not the finished result.");
             });
         } catch (Exception e) {
             e.printStackTrace();
-        }
-        System.out.println(String.format("Wrote %d files", files.size()));
+        }*/
+        /*System.out.println(String.format("Wrote %d files", files.size()));
         if (!boolPlotAllFrames)
             return files;
         Optional<String> frames = files.parallelStream().sorted()
                 .map((final Integer p) -> String.format("file 'iter_%d_clusterplot.json'", p))
-                .reduce((final String prev, final String next) -> String.format("%s%n%s", prev, next));
-        return files;
+                .reduce((final String prev, final String next) -> String.format("%s%n%s", prev, next));*/
+        //---------------------------------------------------
+
+
+        ClusteringResult result = conn.queryResult(resultId).get();
+        //System.out.println("WEIIGHHHTTTSSS " + rdList.get(0).getClusters());
+        String filename = null;
+        if(boolPlotClusterMembers){
+            //TODO final result png check it
+                for (Map.Entry<Integer, List<ClusterDescriptor>> entry: result.getTrainingProgressClusters().entrySet()) {
+                    filename = "clusteringResults/" + resultId + "/" + (entry.getKey()) + ".png";
+                    ClusterLineChart linchartidx = new ClusterLineChart(entry.getValue(), clusterPlotHeight, clusterPlotWidth);
+                    linchartidx.run();
+                    linchartidx.saveNew(filename);
+                }
+
+        }else {
+            System.out.print("INTERMEDIATE");
+            /*ClusteringResult element = result.get(result.size() - 1);
+            //TODO FINALCLUSTER ITERATION
+            filename = "clusteringResults/" + resultId + "/" + 100 + ".png";
+            ClusterLineChart linchartidx = new ClusterLineChart(element, clusterPlotHeight, clusterPlotWidth);
+            linchartidx.run();
+            linchartidx.saveNew(filename);*/
+        }
     }
 
 
