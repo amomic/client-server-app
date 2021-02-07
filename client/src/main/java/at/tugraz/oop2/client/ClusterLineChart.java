@@ -24,7 +24,7 @@ public class ClusterLineChart {
     private final Graphics2D graphics2D;
     private final int padding = 10;
     private final Color lineColor = new Color(10, 255, 14, 255);
-    private final Color pointColor = new Color(248, 234, 2, 255);
+    private final Color pointColor = new Color(10, 2, 248, 255);
     private int x_offset = 0;
     private int y_offset = 0;
     private int inner_plot_width = 0;
@@ -118,7 +118,7 @@ public class ClusterLineChart {
         for(DataSeries series: listSeries)
         {
             yScale = ((double) height - 2 * padding ) / ((getMaxDataPoints(series)) - (getMinDataPoints(series)));
-            g2d.setColor(new Color(255, 0, 8, 200));
+            g2d.setColor(new Color(0, 64, 255, 200));
             g2d.setStroke(new BasicStroke(0.5f));
             int i = 0;
             List<Point> graphPoints2 = new ArrayList<>();
