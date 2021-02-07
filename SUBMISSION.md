@@ -61,7 +61,7 @@ Weights are updated after every iteration.
 
 4.inspect cluster -> takes id, height, width and boolean verbose. If it takes verbose argument as true, it prints all members, their from and to time and their ids.
 
-5. plotcluster-> 
+5. plotcluster-> we have read the json files from the given resultId and then produced them on an image with graphiscs2D.
 
 6. creating videos -> videos created with given command and uploaded on Teach Center
 
