@@ -15,10 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 
-/// source> https://github.com/Madonahs/Graphics-2D-in-Java/blob/master/SimpleGraph/SampleGraph/src/com/madonasyombua/exe/Graph.java
-
-/// cluster 1503,1693 P1 2018-01-01 2018-01-05 1h mean 24 2 2 1 0.5 10000 0xCAFE 100
-/// plotcluster 0xCAFE 2 2 false NONE false
+// source -> https://github.com/Madonahs/Graphics-2D-in-Java/blob/master/SimpleGraph/SampleGraph/src/com/madonasyombua/exe/Graph.java
 
 public class ClusterLineChart {
 
@@ -43,7 +40,6 @@ public class ClusterLineChart {
     private List<Double> dataPoints;
     private List<DataPoint> listNumbers;
     private List<DataSeries> listSeries;
-    //private List<ClusterDescriptor> list;
 
     public ClusterLineChart(List<ClusterDescriptor> results, int plotheight, int plotwidth) {
 
@@ -56,7 +52,6 @@ public class ClusterLineChart {
         this.height = inner_plot_height;
         this.outer_plot_height = 3000;
         this.outer_plot_width = 3000;
-
 
         bufferedImage = new BufferedImage(outer_plot_width, outer_plot_height, BufferedImage.TYPE_INT_RGB);
         graphics2D = bufferedImage.createGraphics();
@@ -94,7 +89,7 @@ public class ClusterLineChart {
     }
 
     public void run(){
-        int i =0;
+        int i = 0;
         for(ClusterDescriptor cd : cluster){
             this.dataPoints = cd.getWeights();
             this.listSeries = cd.getMembers();
@@ -104,9 +99,7 @@ public class ClusterLineChart {
             g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             newPaint(cd, g2d);
             storeImage(cd.getHeigthIndex()+1, cd.getWidthIndex()+1, bi);
-            //System.out.println(cd.getWeights().get(0));
         }
-
     }
 
     void newPaint(ClusterDescriptor cd, Graphics2D g2d){
@@ -115,12 +108,6 @@ public class ClusterLineChart {
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         double xScale = ((double) width - (2 * padding)) / (dataPoints.size() - 1);
         double yScale = ((double) height - 2 * padding ) / (getMaxScore() - getMinScore());
-        //System.out.println(yScale);
-
-
-
-
-
 
         List<Point> graphPoints = new ArrayList<>();
         for (int i = 0; i < dataPoints.size(); i++) {
@@ -129,12 +116,9 @@ public class ClusterLineChart {
             graphPoints.add(new Point(x1, y1));
         }
 
-
-
         // create x and y axes
         g2d.drawLine(padding , height - padding, padding , padding);
         g2d.drawLine(padding, height - padding , width - padding, height - padding );
-
 
         Stroke oldStroke = g2d.getStroke();
         g2d.setColor(lineColor);
@@ -150,10 +134,8 @@ public class ClusterLineChart {
         g2d.setStroke(oldStroke);
         g2d.setColor(pointColor);
 
-        //
         for(DataSeries series: listSeries)
         {
-//             yScale = ((double) height - 2 * padding ) / ((getMaxDataPoints(series) + padding) - (getMinDataPoints(series) - padding));
             yScale = ((double) height - 2 * padding ) / ((getMaxDataPoints(series)) - (getMinDataPoints(series)));
 
             g2d.setColor(new Color(10, 102, 230, 200));
@@ -180,8 +162,6 @@ public class ClusterLineChart {
     }
 
     void paintComponent() {
-
-        // createDataPoints();
         graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         double xScale = ((double) width - (2 * padding)) / (dataPoints.size() - 1);
         double yScale = ((double) height - 2 * padding ) / (getMaxScore() - getMinScore());
@@ -260,7 +240,6 @@ public class ClusterLineChart {
     }
 
 
-
     private double getMinScore() {
         double minScore = Double.MAX_VALUE;
         for (Double score : dataPoints) {
@@ -290,5 +269,4 @@ public class ClusterLineChart {
         }
         setScores(dataPoints);
     }
-
 }
