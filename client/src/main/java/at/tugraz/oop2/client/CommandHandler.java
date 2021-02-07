@@ -529,16 +529,24 @@ public final class CommandHandler {
 
         String filename = null;
         if(boolPlotClusterMembers){
-            //TODO final result png check it
             for (Map.Entry<Integer, List<ClusterDescriptor>> entry: result.getTrainingProgressClusters().entrySet()) {
                 filename = "clusteringResults/" + resultId + "/" + (entry.getKey()) + ".png";
                 ClusterLineChart linchartidx = new ClusterLineChart(entry.getValue(), clusterPlotHeight, clusterPlotWidth);
                 linchartidx.run();
                 linchartidx.saveNew(filename);
             }
+            filename = "clusteringResults/" + resultId + "/" + "final.png";
+            ClusterLineChart linchartidx = new ClusterLineChart(result.getFinalClusters(), clusterPlotHeight, clusterPlotWidth);
+            linchartidx.run();
+            linchartidx.saveNew(filename);
+
+
         }
         else{
-            System.out.print("INTERMEDIATE");
+            filename = "clusteringResults/" + resultId + "/" + "final.png";
+            ClusterLineChart linchartidx = new ClusterLineChart(result.getFinalClusters(), clusterPlotHeight, clusterPlotWidth);
+            linchartidx.run();
+            linchartidx.saveNew(filename);
         }
     }
 
