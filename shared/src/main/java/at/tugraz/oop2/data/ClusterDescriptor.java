@@ -1,7 +1,9 @@
 package at.tugraz.oop2.data;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -14,11 +16,13 @@ import java.util.List;
  */
 @EqualsAndHashCode
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public final class ClusterDescriptor implements Serializable {
-    private final int heigthIndex;
-    private final int widthIndex;
-    private final List<Double> weights;
-    private final List<DataSeries> members;
+    private int heigthIndex;
+    private int widthIndex;
+    private List<Double> weights;
+    private List<DataSeries> members;
     final double updateRadius = 0;
     boolean finished = false;
 

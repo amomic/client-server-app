@@ -1,10 +1,7 @@
 package at.tugraz.oop2.data;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
+import lombok.*;
 
 import java.io.Serializable;
 
@@ -16,28 +13,29 @@ import java.io.Serializable;
  * that measures three metrics is represented with three instances of this class.
  */
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode
 @ToString
 public final class Sensor implements Serializable {
 
     @JsonProperty("id")
-    private final int id;
+    private int id;
 
     @JsonProperty("type")
-    private final String type;
+    private String type;
 
     @JsonProperty("latitude")
-    private final double latitude;
+    private double latitude;
 
     @JsonProperty("longitude")
-    private final double longitude;
+    private double longitude;
 
     @JsonProperty("location")
-    private final String location;
+    private String location;
 
     @JsonProperty("metric")
-    private final String metric;
+    private String metric;
 
 
     public String prettyString() {

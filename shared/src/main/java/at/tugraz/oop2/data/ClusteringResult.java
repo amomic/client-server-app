@@ -23,4 +23,15 @@ public class ClusteringResult implements Serializable {
         this.trainingProgressClusters.putAll(trainingProgressClusters);
         this.finalClusters.addAll(finalClusters);
     }
+
+    public void setFinalClusters(List<ClusterDescriptor> finalClusters)
+    {
+        this.finalClusters.clear();
+        this.finalClusters.addAll(finalClusters);
+    }
+
+    public void addTrainingProgressCluster(int iteration, List<ClusterDescriptor> finalClusters)
+    {
+        this.trainingProgressClusters.put(iteration, finalClusters);
+    }
 }

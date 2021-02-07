@@ -43,7 +43,7 @@ public class ServerThread extends Thread {
                     Logger.serverRequestLS();
                     System.out.println("Server request is sent!");
 
-                    File file = new File(path + "/sensors");
+                    File file = new File(path);
                     querySensors(file);
                     outputStream.writeObject(new WrapperLsObject(sensorList));
                     outputStream.reset();
@@ -176,7 +176,7 @@ public class ServerThread extends Thread {
     private DataSeries queryData(DataQueryParameters parameters)
             throws IOException, InterpolationException
     {
-        File dataDir = new File(path + "/sensors");
+        File dataDir = new File(path);
         List<File> sensorFiles = getSensorFiles(dataDir, parameters.getSensorId());
         Sensor sensor = getSensorFromFile(sensorFiles.get(0), parameters);
         List<DataPoint> dataPoints = new ArrayList<>();
@@ -200,7 +200,7 @@ public class ServerThread extends Thread {
     private DataSeries queryData(DataQueryParameters parameters, int length)
             throws IOException, InterpolationException
     {
-        File dataDir = new File(path + "/sensors");
+        File dataDir = new File(path);
         List<File> sensorFiles = getSensorFiles(dataDir, parameters.getSensorId());
         Sensor sensor = getSensorFromFile(sensorFiles.get(0), parameters);
         List<DataPoint> dataPoints = new ArrayList<>();
@@ -533,7 +533,7 @@ public class ServerThread extends Thread {
         ArrayList<String> invalidSensorsOrMetrics = new ArrayList<>();
 
         if (sensorList.size() == 0) {
-            File file = new File(path + "/sensors");
+            File file = new File(path);
             querySensors(file);
         }
 

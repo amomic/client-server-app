@@ -3,8 +3,14 @@ package at.tugraz.oop2.client;
 import at.tugraz.oop2.Logger;
 import at.tugraz.oop2.Util;
 import at.tugraz.oop2.data.*;
+import at.tugraz.oop2.serialization.DataSeriesJsonDeserializer;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import lombok.Data;
 import lombok.SneakyThrows;
 
+import javax.management.Descriptor;
 import java.awt.*;
 import java.io.BufferedReader;
 import java.io.File;
@@ -13,10 +19,13 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
@@ -405,7 +414,6 @@ public final class CommandHandler {
         final int iterations =  Integer.parseUnsignedInt(args[11]);
         final int resultId = Integer.decode(args[12]);
         final int inter_results =  Integer.parseUnsignedInt(args[13]);
-        //List<ClusterDescriptor> series = null;
 
         SOMQueryParameters somQueryParameters = new SOMQueryParameters(intList, type, from, to, operation, interval, length,grid_length,grid_width,radius,rate,
                 iterations, resultId,inter_results);
@@ -417,28 +425,22 @@ public final class CommandHandler {
             System.out.println("Exception will be thrown! Length value is not valid!");
             throw new Exception("Cannot divide into arrays of the same length");
         }
-        if(numberOfIntervals % somQueryParameters.getLength() == 0)
-        {
-            System.out.println("Client request is sent!");
-            System.out.println("Client response:");
-            System.out.println("          sensors:       " + sensorIds);
-            System.out.println("          type:          " + type);
-            System.out.println("          from:          " + from + " until " + to);
+        conn.queryCluster(somQueryParameters).get();
 
-            System.out.println("          packing:       " + length + " DataPoints using " + operation + " with a sampling size of " + interval + " seconds");
-            System.out.println("          SOM-Params;    " + "(" + grid_length + ", " + grid_width + ")" + " - Grid with a learning rate of " + rate + " and an initial update Radius of " + radius+ " times the diameter of the grid for " + iterations + " iterations per curve.");
-            System.out.println("          ResultID:      " + resultId + " will contain " + inter_results + " intermediate results.");
+        System.out.println("Client request is sent!");
+        System.out.println("Client response:");
+        System.out.println("          sensors:       " + sensorIds);
+        System.out.println("          type:          " + type);
+        System.out.println("          from:          " + from + " until " + to);
 
-            System.out.println("Check results in json file!");
-        }
-        ClusteringResult result = (ClusteringResult) conn.queryCluster(somQueryParameters).get();
+        System.out.println("          packing:       " + length + " DataPoints using " + operation + " with a sampling size of " + interval + " seconds");
+        System.out.println("          SOM-Params;    " + "(" + grid_length + ", " + grid_width + ")" + " - Grid with a learning rate of " + rate + " and an initial update Radius of " + radius+ " times the diameter of the grid for " + iterations + " iterations per curve.");
+        System.out.println("          ResultID:      " + resultId + " will contain " + inter_results + " intermediate results.");
 
-        /*for (int i = 0 ; i < (somQueryParameters.getAmountOfIntermediateResults());i++ ) {
-            Logger.clientIntermediateResponse(somQueryParameters, i);
-        }*/
+        System.out.println("Check results in a json files! There are " + somQueryParameters.getAmountOfIntermediateResults() +
+                " intermediate results. For a final results check out final.json");
+
         Logger.clientResponseCluster(somQueryParameters);
-
-
     }
 
     @SneakyThrows
@@ -511,95 +513,88 @@ public final class CommandHandler {
         if (clusterPlotHeight <= 0 || clusterPlotWidth <= 0)
             Logger.err("Width and Height have to be positive.");
 
-        final String cluster = Integer.toString(resultId);
+        final String resultID = Integer.toString(resultId);
         System.out.println("Client request is sent!");
         Logger.clientPlotCluster(resultId, boolPlotClusterMembers, heatMapOperation, boolPlotAllFrames);
-        if (cluster == String.valueOf(0)) {
+        if (resultID.equalsIgnoreCase(String.valueOf(0))) {
             Logger.err("Two or more missing cluster points. No response from the server.");
             System.out.println("Two or more missing cluster points. No response from the server.");
         }
-        ClusteringResult result = conn.queryResult(resultId).get();
+        // TODO: I have made the function which will read you everything you need, please have a look at it and plot again
+        // Now you should have no problem with data
+        // DELAL: This should not be anymore like this:
+        // ClusteringResult result = conn.queryResult(resultId).get();
+        // but like this:
+        ClusteringResult result = this.readClusterResultFromJson(resultId);
+
         String filename = null;
         if(boolPlotClusterMembers){
             //TODO final result png check it
-                for (Map.Entry<Integer, List<ClusterDescriptor>> entry: result.getTrainingProgressClusters().entrySet()) {
-                    filename = "clusteringResults/" + resultId + "/" + (entry.getKey()) + ".png";
-                    ClusterLineChart linchartidx = new ClusterLineChart(entry.getValue(), clusterPlotHeight, clusterPlotWidth);
-                    linchartidx.run();
-                    linchartidx.saveNew(filename);
-                }
+            for (Map.Entry<Integer, List<ClusterDescriptor>> entry: result.getTrainingProgressClusters().entrySet()) {
+                filename = "clusteringResults/" + resultId + "/" + (entry.getKey()) + ".png";
+                ClusterLineChart linchartidx = new ClusterLineChart(entry.getValue(), clusterPlotHeight, clusterPlotWidth);
+                linchartidx.run();
+                linchartidx.saveNew(filename);
+            }
         }
         else{
             System.out.print("INTERMEDIATE");
-            //
-            //TODO FINALCLUSTER ITERATION
         }
     }
 
 
-    // TODO: inspect cluster
-    private void inspectCluster(String... args) throws CommandException {
+    private void inspectCluster(String... args) throws Exception {
         validateArgc(args, 3, 4);
         final int heightIndex = Integer.parseUnsignedInt(args[1]);
         final int widthIndex = Integer.parseUnsignedInt(args[2]);
-        String id1 = args[0];
-        int resultID1 = 0;
-        if(id1.contains("x")){
-            resultID1 = Integer.decode(id1);
+        boolean verbose = Boolean.parseBoolean(args[3]);
+
+        int resultID;
+        if(args[0].contains("x")){
+            resultID = Integer.decode(args[0]);
         }
         else {
-            resultID1 = Integer.parseInt(id1);
+            resultID = Integer.parseInt(args[0]);
         }
-        ClusterDescriptor results = null;
-        List<ClusterDescriptor> listing = null;
-        final boolean boolVerbose = args.length >= 4 && Boolean.parseBoolean(args[3]); // default false
-         try {
-            listing = (List<ClusterDescriptor>) conn.queryResult(resultID1).get();
-            if (results== null)
-                throw new CommandException("Not a directory");
+        readClusterResultFromJson(resultID);
 
-            for( int i = 0; i < listing.size(); i++){
-                for (int j = 0; j < listing.get(i).getClusters().size(); j ++) {
-                    if ((listing.get(i).getClusters().get(j).getHeightIndex() + 1) == heightIndex && (listing.get(i).getClusters().get(j).getWidthIndex() + 1) == widthIndex)
-                    {
-                        results = listing.get(i).getClusters().get(j);
-                        DataSeries from = listing.get(i).getMembers().get(i);
-                        DataSeries to = listing.get(i).getMembers().get(i);
-                        Logger.clientInspectCluster(resultID1, heightIndex,widthIndex, results);
-                        Logger.clientInspectCluster(resultID1, heightIndex,widthIndex, results);
-                        if(boolVerbose){
-                            System.out.print("  | ----------------------------------------------------- |\n");
-                            System.out.print("  |       from       |        to          |   sensor      |\n");
-                            System.out.print("  | ----------------------------------------------------- |\n");
-                            for (DataSeries series : listing.get(i).getClusters().get(j).getMembers()){
-                                System.out.print("  | " + from + " | " );
-                                System.out.print("  | ----------------------------------------------------- |\n");
-                                System.out.print("  " + to + " |");
-                                System.out.print("  | ----------------------------------------------------- |\n");
-                                System.out.print("     "+  series.getSensor().getId() + "      |");
-                                System.out.print("  | ----------------------------------------------------- |\n");
-                                System.out.print("\n");
-                                System.out.print("  | ----------------------------------------------------- |\n");
-                            }
-                        }
-                    }
-                }
+        List<ClusterDescriptor> clusters = readFinalClusterFromJson(resultID);
+        ClusterDescriptor inspectedCluster = null;
+        for (ClusterDescriptor cluster : clusters)
+        {
+            if (cluster.getHeigthIndex() == heightIndex && cluster.getWidthIndex() == widthIndex)
+            {
+                inspectedCluster = cluster;
+                break;
             }
+        }
+        if (inspectedCluster == null)
+        {
+            throw new Exception("Cannot find cluster at position (h: " + heightIndex + ", w: " + widthIndex + ")");
+        }
+        System.out.println("+-----------------------------------------------------------+");
+        System.out.format("| Node (%d, %d) from resultID                                |%n", heightIndex, widthIndex);
+        System.out.println("+---------------------------------------------+-------------+");
+        System.out.format("| %-43s | %10d |%n", "#Members", inspectedCluster.getMembers().size());
+        System.out.format("| %-43s | %10.4f |%n", "#Error", inspectedCluster.getError());
+        System.out.format("| %-43s | %10.4f |%n", "#Entropy", inspectedCluster.getDistanceEntropy());
+        System.out.println("+---------------------------------------------+-------------+");
 
-        } catch (IOException e) {
-             Logger.warn(String.format("Exception inspecting: %s"));
-             throw new CommandException("Could not  found inspect cluster");
-        } catch (ExecutionException e) {
-             e.printStackTrace();
-         } catch (InterruptedException e) {
-             e.printStackTrace();
-         } catch (ClassNotFoundException e) {
-             e.printStackTrace();
-         } catch (Exception e) {
-             e.printStackTrace();
-         }
 
+        if (verbose) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
 
+            System.out.println("| List of all members:                                      |");
+            System.out.println("+----------------------+----------------------+-------------+");
+            System.out.format("| %-20s | %-20s | %-10s |%n", "From:", "To:", "Sensor:");
+            System.out.println("+----------------------+----------------------+-------------+");
+            for (DataSeries series : inspectedCluster.getMembers()) {
+                String parsedFrom = formatter.format(series.getFrom());
+                String parsedTo = formatter.format(series.getTo());
+                System.out.format("| %-20s | %-20s |  %10s |%n", parsedFrom, parsedTo, series.getSensor().getId());
+            }
+            System.out.println("+----------------------+----------------------+-------------+");
+        }
     }
 
     private void displayHelp(String... args) {
@@ -632,5 +627,50 @@ public final class CommandHandler {
         public CommandException(String message) {
             super(message);
         }
+    }
+
+
+    private ClusteringResult readClusterResultFromJson(int resultID) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        SimpleModule module = new SimpleModule();
+        module.addDeserializer(DataSeries.class, new DataSeriesJsonDeserializer());
+        mapper.registerModule(module);
+
+        String resultDirPath = "clusteringResults/" + resultID;
+        File resultDir = new File(resultDirPath);
+        File[] files = resultDir.listFiles();
+
+        ClusteringResult result = new ClusteringResult();
+        for (File f : files) {
+            Pattern iterationResultPattern = Pattern.compile("\\d+.json");
+            Pattern finalResultPattern = Pattern.compile("final.json");
+            Matcher iterationResultMatcher = iterationResultPattern.matcher(f.getName());
+            Matcher finalResultMatcher = finalResultPattern.matcher(f.getName());
+
+            if (finalResultMatcher.find()) {
+                ClusterDescriptor[] clusters = mapper.readValue(f, ClusterDescriptor[].class);
+                result.setFinalClusters(Arrays.asList(clusters.clone()));
+            }
+            else if (iterationResultMatcher.matches())
+            {
+                int iteration = Integer.parseInt(iterationResultMatcher.group(0).split("\\.")[0]);
+                ClusterDescriptor[] clusters = mapper.readValue(f, ClusterDescriptor[].class);
+                result.addTrainingProgressCluster(iteration, Arrays.asList(clusters.clone()));
+            }
+        }
+
+        return result;
+    }
+
+
+    private List<ClusterDescriptor> readFinalClusterFromJson(int resultID) throws IOException {
+        String path = "clusteringResults/" + resultID + "/final.json";
+        File json = new File(path);
+        ObjectMapper mapper = new ObjectMapper();
+        SimpleModule module = new SimpleModule();
+        module.addDeserializer(DataSeries.class, new DataSeriesJsonDeserializer());
+        mapper.registerModule(module);
+        ClusterDescriptor[] clusters = mapper.readValue(json, ClusterDescriptor[].class);
+        return Arrays.asList(clusters.clone());
     }
 }

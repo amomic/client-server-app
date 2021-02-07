@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
@@ -54,6 +55,28 @@ public final class DataSeries extends TreeSet<DataPoint> {
             }
         }
         return new double[]{minimum, maximum};
+    }
+
+
+    public LocalDateTime getFrom() {
+        LocalDateTime from = LocalDateTime.MAX;
+        for (DataPoint point : this) {
+            if (point.getTime().isBefore(from)) {
+                from = point.getTime();
+            }
+        }
+        return from;
+    }
+
+
+    public LocalDateTime getTo() {
+        LocalDateTime to = LocalDateTime.MIN;
+        for (DataPoint point : this) {
+            if (point.getTime().isAfter(to)) {
+                to = point.getTime();
+            }
+        }
+        return to;
     }
 
     public enum Operation {

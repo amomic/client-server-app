@@ -1,8 +1,8 @@
 package at.tugraz.oop2.client;
 
 import at.tugraz.oop2.Logger;
-import at.tugraz.oop2.Util;
 import at.tugraz.oop2.data.*;
+import at.tugraz.oop2.serialization.DataSeriesJsonSerializer;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
@@ -15,7 +15,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -127,7 +126,6 @@ public final class ClientConnection implements AutoCloseable {
 
     //TODO: implemetation of the 2nd assignment
 
-
     public CompletableFuture<List<ClusterDescriptor>> queryCluster(SOMQueryParameters somQueryParameters) throws Exception {
         CompletableFuture<List<ClusterDescriptor>> dataSeriesCompletableFuture = new CompletableFuture<>();
 
@@ -135,39 +133,27 @@ public final class ClientConnection implements AutoCloseable {
         outputStream.writeObject(somQueryParameters);
         String saveDirPath = "clusteringResults/";
         String saveDirId= "clusteringResults/"+ String.valueOf(somQueryParameters.getResultId()) ;
-        //for(int i = 0; i < somQueryParameters.getAmountOfIntermediateResults(); i++) {
-            //System.out.print("ANFANG FOR SCHLEIFE\n");
-            clusteringResult = (ClusteringResult) inputStream.readObject();
-            if(clusteringResult == null)
-            {
-                outputStream.reset();
-                throw new Exception("Clustering error");
-            }
-            File directory = new File(saveDirPath);
-            if (! directory.exists()) {
-                directory.mkdirs();
-            }
-            File id_directory = new File(saveDirId);
-            if (! id_directory.exists()) {
-                id_directory.mkdirs();
-            }
-            else {
-                throw new Exception("ResultID already used!");
-            }
-            //System.out.print("MITTE FOR SCHLEIFE\n");
-            String saveJsonDir = saveDirPath + File.separator + String.valueOf(somQueryParameters.getResultId());
-            saveClusteringResultsToJsonFile(somQueryParameters, clusteringResult, saveJsonDir);
-            //List<ClusteringResult> entry = new ArrayList<>();
-            //if(som_results_map.containsKey(Integer.toString(somQueryParameters.getResultId())))
-            //    entry = som_results_map.get(Integer.toString(somQueryParameters.getResultId()));
-            //entry.add(clusteringResult);
-            som_results_map.put(Integer.toString(somQueryParameters.getResultId()), clusteringResult);
-            outputStream.reset();
-            //System.out.print("ENDEEE FOR SCHLEIFE\n");
+        clusteringResult = (ClusteringResult) inputStream.readObject();
+        outputStream.reset();
 
-        //System.out.print("AUßERHALB FOR SCHLEIFE\n");
-        dataSeriesCompletableFuture.complete((List<ClusterDescriptor>) clusteringResult);
-        //System.out.print("ENDDEEEE\n");
+        if(clusteringResult == null)
+        {
+            throw new Exception("Clustering error");
+        }
+        File directory = new File(saveDirPath);
+        if (! directory.exists()) {
+            directory.mkdirs();
+        }
+        File id_directory = new File(saveDirId);
+        if (! id_directory.exists()) {
+            id_directory.mkdirs();
+        }
+        else {
+            throw new Exception("ResultID already used!");
+        }
+        String saveJsonDir = saveDirPath + File.separator + String.valueOf(somQueryParameters.getResultId());
+        saveClusteringResultsToJsonFile(somQueryParameters, clusteringResult, saveJsonDir);
+        dataSeriesCompletableFuture.complete(clusteringResult.getFinalClusters());
         return dataSeriesCompletableFuture;
     }
 
@@ -182,9 +168,6 @@ public final class ClientConnection implements AutoCloseable {
         compFuture = CompletableFuture.completedFuture(entry);
         return compFuture;
     }
-
-
-
 
 
     private void saveClusteringResultsToJsonFile(SOMQueryParameters somQueryParameters, ClusteringResult result, String clusteringResultsDir) throws IOException {
@@ -202,25 +185,20 @@ public final class ClientConnection implements AutoCloseable {
             directory.mkdirs();
         }
 
-        int i = 0;
-        int add = (int) (somQueryParameters.getIterationsPerCurve() / somQueryParameters.getAmountOfIntermediateResults());
-        // 10000/100 = 10
-
         // save training results first
         for (Map.Entry<Integer, List<ClusterDescriptor>> entry: result.getTrainingProgressClusters().entrySet())
         {
             File jsonFile = new File(clusteringResultsDir + File.separator + entry.getKey().toString() + ".json");
             jsonFile.createNewFile();
-            writer.writeValue(jsonFile, entry.getValue());
-            Logger.clientIntermediateResponse(somQueryParameters, i);
-            i += add;
+            List<ClusterDescriptor> interimResult = entry.getValue();
+            writer.writeValue(jsonFile, interimResult);
         }
 
         // save final result
         File jsonFile = new File(clusteringResultsDir + File.separator + "final.json");
         jsonFile.createNewFile();
-        writer.writeValue(jsonFile, result.getFinalClusters());
-
+        List<ClusterDescriptor> finalResult = result.getFinalClusters();
+        writer.writeValue(jsonFile, finalResult);
     }
 
     @FunctionalInterface
