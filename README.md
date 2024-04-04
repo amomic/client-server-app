@@ -1,8 +1,7 @@
-# Objektorientierte Programmierung 2 KU Assignment 2020
 
 # Overview
 
-The goal of this course is to get familiar with advanced object oriented concepts by implementing a two part system for processing and visualizing real world sensor data.
+The goal is to get familiar with advanced object oriented concepts by implementing a two part system for processing and visualizing real world sensor data.
 
 The ecosystem you'll have to work in is comprised of two main components:
 
